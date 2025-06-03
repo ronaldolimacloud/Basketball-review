@@ -4,7 +4,7 @@ import type { Player, PeriodScore, GameFormat } from '../types/game.types';
  * Create initial players with default stats
  */
 export const createInitialPlayers = (): Player[] => {
-  return Array.from({ length: 8 }, (_, index) => ({
+  return Array.from({ length: 10 }, (_, index) => ({
     id: index + 1,
     name: `Player ${index + 1}`,
     onCourt: index < 5, // First 5 players start on court
