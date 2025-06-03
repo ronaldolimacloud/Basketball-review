@@ -341,57 +341,57 @@ const BasketballReviewApp = () => {
   // Setup screen
   if (isSetup) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-lg p-8 max-w-2xl w-full">
-          <h1 className="text-3xl font-bold mb-8 text-center">Basketball Game Setup</h1>
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="bg-slate-900 rounded-lg p-8 max-w-2xl w-full border border-slate-700">
+          <h1 className="text-3xl font-bold mb-8 text-center text-yellow-400">Basketball Game Setup</h1>
           
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Your Team Name</label>
+              <label className="block text-sm font-medium mb-2 text-slate-300">Your Team Name</label>
               <input
                 type="text"
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 placeholder="Enter your team name"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Opponent Team Name</label>
+              <label className="block text-sm font-medium mb-2 text-slate-300">Opponent Team Name</label>
               <input
                 type="text"
                 value={opponentName}
                 onChange={(e) => setOpponentName(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 placeholder="Enter opponent team name"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">Game Format</label>
+              <label className="block text-sm font-medium mb-2 text-slate-300">Game Format</label>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setGameFormat('quarters')}
                   className={`p-4 rounded-lg border-2 transition-all ${
                     gameFormat === 'quarters'
-                      ? 'border-blue-500 bg-blue-500 bg-opacity-20'
-                      : 'border-gray-600 hover:border-gray-500'
+                      ? 'border-yellow-500 bg-yellow-500 bg-opacity-20'
+                      : 'border-slate-600 hover:border-slate-500 bg-slate-800'
                   }`}
                 >
-                  <div className="font-semibold">4 Quarters</div>
-                  <div className="text-sm text-gray-400">NBA, High School</div>
+                  <div className="font-semibold text-white">4 Quarters</div>
+                  <div className="text-sm text-slate-400">NBA, High School</div>
                 </button>
                 <button
                   onClick={() => setGameFormat('halves')}
                   className={`p-4 rounded-lg border-2 transition-all ${
                     gameFormat === 'halves'
-                      ? 'border-blue-500 bg-blue-500 bg-opacity-20'
-                      : 'border-gray-600 hover:border-gray-500'
+                      ? 'border-yellow-500 bg-yellow-500 bg-opacity-20'
+                      : 'border-slate-600 hover:border-slate-500 bg-slate-800'
                   }`}
                 >
-                  <div className="font-semibold">2 Halves</div>
-                  <div className="text-sm text-gray-400">College Basketball</div>
+                  <div className="font-semibold text-white">2 Halves</div>
+                  <div className="text-sm text-slate-400">College Basketball</div>
                 </button>
               </div>
             </div>
@@ -399,14 +399,14 @@ const BasketballReviewApp = () => {
             <div className="mt-8">
               <button
                 onClick={handleSetupComplete}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold text-lg"
+                className="w-full bg-yellow-500 hover:bg-yellow-600 py-3 rounded-lg font-semibold text-lg text-black transition-colors"
                 disabled={!teamName.trim() || !opponentName.trim()}
               >
                 Start Game Review
               </button>
             </div>
             
-            <p className="text-sm text-gray-400 text-center mt-4">
+            <p className="text-sm text-slate-400 text-center mt-4">
               You can edit player names during the game by clicking the edit icon next to their name
             </p>
           </div>
@@ -416,18 +416,18 @@ const BasketballReviewApp = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
+    <div className="min-h-screen bg-slate-950 text-white p-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold">Basketball Game Review</h1>
-          <p className="text-xl text-gray-400 mt-2">{teamName} vs {opponentName}</p>
+          <h1 className="text-3xl font-bold text-yellow-400">Basketball Game Review</h1>
+          <p className="text-xl text-slate-400 mt-2">{teamName} vs {opponentName}</p>
         </div>
         
         {/* Substitution Modal */}
         {showSubModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-semibold mb-4">
+            <div className="bg-slate-900 rounded-lg p-6 max-w-md w-full mx-4 border border-slate-700">
+              <h3 className="text-xl font-semibold mb-4 text-yellow-400">
                 Who is {players.find(p => p.id === playerSubbingIn)?.name} replacing?
               </h3>
               <div className="space-y-2">
@@ -435,10 +435,10 @@ const BasketballReviewApp = () => {
                   <button
                     key={player.id}
                     onClick={() => completeSubstitution(player.id)}
-                    className="w-full bg-gray-700 hover:bg-gray-600 p-3 rounded-lg text-left flex justify-between items-center"
+                    className="w-full bg-slate-800 hover:bg-slate-700 p-3 rounded-lg text-left flex justify-between items-center transition-colors"
                   >
                     <span>{player.name}</span>
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-slate-400">
                       {formatTime(player.stats.timeOnCourt)}
                     </span>
                   </button>
@@ -449,7 +449,7 @@ const BasketballReviewApp = () => {
                   setShowSubModal(false);
                   setPlayerSubbingIn(null);
                 }}
-                className="mt-4 w-full bg-gray-700 hover:bg-gray-600 py-2 rounded-lg"
+                className="mt-4 w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors"
               >
                 Cancel
               </button>
@@ -459,17 +459,17 @@ const BasketballReviewApp = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Video Section */}
-          <div className="bg-gray-800 rounded-lg p-4">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-yellow-400">
               <Play className="w-5 h-5" />
               Video Player
             </h2>
             
             {!videoSrc ? (
-              <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center bg-slate-800">
+                <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
                 <label className="cursor-pointer">
-                  <span className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg inline-block">
+                  <span className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg inline-block text-black font-semibold transition-colors">
                     Upload Video
                   </span>
                   <input
@@ -497,9 +497,9 @@ const BasketballReviewApp = () => {
                     max="100"
                     value={duration ? (currentTime / duration) * 100 : 0}
                     onChange={handleSeek}
-                    className="w-full"
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
                   />
-                  <div className="flex justify-between text-sm text-gray-400 mt-1">
+                  <div className="flex justify-between text-sm text-slate-400 mt-1">
                     <span>{formatTime(Math.floor(currentTime))}</span>
                     <span>{formatTime(Math.floor(duration))}</span>
                   </div>
@@ -508,19 +508,19 @@ const BasketballReviewApp = () => {
                 <div className="flex justify-center gap-4">
                   <button
                     onClick={skipBackward}
-                    className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg"
+                    className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors"
                   >
                     <SkipBack className="w-6 h-6" />
                   </button>
                   <button
                     onClick={togglePlayPause}
-                    className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg"
+                    className="bg-yellow-500 hover:bg-yellow-600 p-2 rounded-lg text-black transition-colors"
                   >
                     {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
                   </button>
                   <button
                     onClick={skipForward}
-                    className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg"
+                    className="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors"
                   >
                     <SkipForward className="w-6 h-6" />
                   </button>
@@ -530,9 +530,9 @@ const BasketballReviewApp = () => {
           </div>
           
           {/* Game Controls */}
-          <div className="bg-gray-800 rounded-lg p-4">
+          <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
+              <h2 className="text-xl font-semibold flex items-center gap-2 text-yellow-400">
                 <Clock className="w-5 h-5" />
                 Game Clock - {getPeriodLabel()}
               </h2>
@@ -540,25 +540,25 @@ const BasketballReviewApp = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPeriod(Math.max(1, currentPeriod - 1))}
-                    className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+                    className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-sm transition-colors"
                     disabled={currentPeriod === 1}
                   >
                     -
                   </button>
-                  <span className="text-lg font-semibold">{getPeriodLabel()}</span>
+                  <span className="text-lg font-semibold text-yellow-400">{getPeriodLabel()}</span>
                   <button
                     onClick={() => setCurrentPeriod(Math.min(getMaxPeriods(), currentPeriod + 1))}
-                    className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+                    className="bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-sm transition-colors"
                     disabled={currentPeriod === getMaxPeriods()}
                   >
                     +
                   </button>
                 </div>
-                <span className="text-2xl font-mono">{formatTime(gameClock)}</span>
+                <span className="text-2xl font-mono text-yellow-400">{formatTime(gameClock)}</span>
                 <button
                   onClick={() => setIsClockRunning(!isClockRunning)}
-                  className={`px-4 py-2 rounded-lg ${
-                    isClockRunning ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                  className={`px-4 py-2 rounded-lg transition-colors ${
+                    isClockRunning ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'
                   }`}
                 >
                   {isClockRunning ? 'Stop' : 'Start'}
@@ -569,46 +569,46 @@ const BasketballReviewApp = () => {
             <div className="flex justify-center mb-2">
               <button
                 onClick={endPeriod}
-                className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg font-semibold"
+                className="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg font-semibold transition-colors"
               >
                 End {gameFormat === 'quarters' ? 'Quarter' : 'Half'}
               </button>
             </div>
             
-            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+            <div className="bg-slate-800 rounded-lg p-4 mb-4 border border-slate-600">
               <div className="text-center text-3xl font-bold mb-2">
-                <span className="text-blue-400">{teamName}: {teamScore}</span>
-                <span className="mx-3">-</span>
-                <span className="text-red-400">{opponentName}: {opponentScore}</span>
+                <span className="text-yellow-400">{teamName}: {teamScore}</span>
+                <span className="mx-3 text-slate-400">-</span>
+                <span className="text-orange-400">{opponentName}: {opponentScore}</span>
               </div>
               
               <div className="flex justify-center items-center gap-4 mb-2">
                 <div className="text-sm">
-                  <span className="text-gray-400">Team Fouls:</span>
-                  <span className="ml-2 font-semibold text-yellow-400">{teamFouls}</span>
+                  <span className="text-slate-400">Team Fouls:</span>
+                  <span className="ml-2 font-semibold text-amber-400">{teamFouls}</span>
                 </div>
                 <div className="text-sm">
-                  <span className="text-gray-400">Timeouts:</span>
-                  <span className="ml-2 font-semibold">{teamTimeouts}</span>
+                  <span className="text-slate-400">Timeouts:</span>
+                  <span className="ml-2 font-semibold text-yellow-400">{teamTimeouts}</span>
                 </div>
               </div>
               
               <div className="flex justify-center gap-2">
                 <button
                   onClick={() => addOpponentScore(1)}
-                  className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                  className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
                 >
                   {opponentName} +1
                 </button>
                 <button
                   onClick={() => addOpponentScore(2)}
-                  className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                  className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
                 >
                   {opponentName} +2
                 </button>
                 <button
                   onClick={() => addOpponentScore(3)}
-                  className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                  className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
                 >
                   {opponentName} +3
                 </button>
@@ -617,26 +617,26 @@ const BasketballReviewApp = () => {
             
             {/* Period Scores */}
             {periodScores.length > 0 && (
-              <div className="bg-gray-700 rounded-lg p-3 mb-4">
-                <h4 className="text-sm font-semibold mb-2 text-gray-300">Period Breakdown</h4>
+              <div className="bg-slate-800 rounded-lg p-3 mb-4 border border-slate-600">
+                <h4 className="text-sm font-semibold mb-2 text-yellow-400">Period Breakdown</h4>
                 <div className="space-y-1">
                   {periodScores.map((period, index) => (
                     <div key={index} className="flex justify-between text-sm">
-                      <span className="text-gray-400">{period.periodLabel}:</span>
+                      <span className="text-slate-400">{period.periodLabel}:</span>
                       <span>
-                        <span className="text-blue-400">{teamName} {period.teamScore}</span>
-                        <span className="mx-2 text-gray-500">-</span>
-                        <span className="text-red-400">{opponentName} {period.opponentScore}</span>
+                        <span className="text-yellow-400">{teamName} {period.teamScore}</span>
+                        <span className="mx-2 text-slate-500">-</span>
+                        <span className="text-orange-400">{opponentName} {period.opponentScore}</span>
                       </span>
                     </div>
                   ))}
-                  <div className="border-t border-gray-600 pt-1 mt-1">
+                  <div className="border-t border-slate-600 pt-1 mt-1">
                     <div className="flex justify-between text-sm font-semibold">
-                      <span>Total:</span>
+                      <span className="text-slate-300">Total:</span>
                       <span>
-                        <span className="text-blue-400">{teamScore}</span>
-                        <span className="mx-2">-</span>
-                        <span className="text-red-400">{opponentScore}</span>
+                        <span className="text-yellow-400">{teamScore}</span>
+                        <span className="mx-2 text-slate-500">-</span>
+                        <span className="text-orange-400">{opponentScore}</span>
                       </span>
                     </div>
                   </div>
@@ -648,14 +648,14 @@ const BasketballReviewApp = () => {
             <div className="grid grid-cols-2 gap-2 mb-4">
               <button
                 onClick={() => setTeamTimeouts(prev => prev + 1)}
-                className="bg-purple-600 hover:bg-purple-700 p-2 rounded text-sm flex items-center justify-center gap-2"
+                className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 <Timer className="w-4 h-4" />
                 {teamName} Timeout
               </button>
               <button
                 onClick={() => setOpponentTimeouts(prev => prev + 1)}
-                className="bg-purple-600 hover:bg-purple-700 p-2 rounded text-sm flex items-center justify-center gap-2"
+                className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 <Timer className="w-4 h-4" />
                 {opponentName} Timeout
@@ -663,29 +663,29 @@ const BasketballReviewApp = () => {
             </div>
             
             {/* Stat Buttons */}
-            <div className="bg-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-3">
+            <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+              <h3 className="text-lg font-semibold mb-3 text-yellow-400">
                 {selectedPlayer ? `Recording for: ${players.find(p => p.id === selectedPlayer)?.name}` : 'Select a player first'}
               </h3>
               
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <button
                   onClick={() => { addStat('points', 1); addStat('ftMade'); }}
-                  className="bg-green-600 hover:bg-green-700 p-2 rounded text-sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   1 PT (FT Made)
                 </button>
                 <button
                   onClick={() => { addStat('points', 2); addStat('fgMade'); }}
-                  className="bg-green-600 hover:bg-green-700 p-2 rounded text-sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   2 PTS
                 </button>
                 <button
                   onClick={() => { addStat('points', 3); addStat('fgMade'); }}
-                  className="bg-green-600 hover:bg-green-700 p-2 rounded text-sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   3 PTS
@@ -695,21 +695,21 @@ const BasketballReviewApp = () => {
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <button
                   onClick={() => addStat('fgMissed')}
-                  className="bg-orange-600 hover:bg-orange-700 p-2 rounded text-sm"
+                  className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   FG Miss
                 </button>
                 <button
                   onClick={() => addStat('ftMissed')}
-                  className="bg-orange-600 hover:bg-orange-700 p-2 rounded text-sm"
+                  className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   FT Miss
                 </button>
                 <button
                   onClick={() => addStat('turnovers')}
-                  className="bg-red-600 hover:bg-red-700 p-2 rounded text-sm"
+                  className="bg-red-600 hover:bg-red-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Turnover
@@ -719,42 +719,42 @@ const BasketballReviewApp = () => {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => addStat('assists')}
-                  className="bg-blue-600 hover:bg-blue-700 p-2 rounded text-sm"
+                  className="bg-cyan-600 hover:bg-cyan-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Assist
                 </button>
                 <button
                   onClick={() => addStat('offRebounds')}
-                  className="bg-blue-600 hover:bg-blue-700 p-2 rounded text-sm"
+                  className="bg-cyan-600 hover:bg-cyan-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Off Reb
                 </button>
                 <button
                   onClick={() => addStat('defRebounds')}
-                  className="bg-blue-600 hover:bg-blue-700 p-2 rounded text-sm"
+                  className="bg-cyan-600 hover:bg-cyan-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Def Reb
                 </button>
                 <button
                   onClick={() => addStat('steals')}
-                  className="bg-purple-600 hover:bg-purple-700 p-2 rounded text-sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Steal
                 </button>
                 <button
                   onClick={() => addStat('blocks')}
-                  className="bg-purple-600 hover:bg-purple-700 p-2 rounded text-sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Block
                 </button>
                 <button
                   onClick={() => addStat('fouls')}
-                  className="bg-yellow-600 hover:bg-yellow-700 p-2 rounded text-sm"
+                  className="bg-amber-600 hover:bg-amber-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
                   disabled={!selectedPlayer}
                 >
                   Foul
@@ -766,36 +766,36 @@ const BasketballReviewApp = () => {
         
         {/* Period Summary */}
         {periodScores.length > 0 && (
-          <div className="mt-6 bg-gray-800 rounded-lg p-4">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <div className="mt-6 bg-slate-900 rounded-lg p-4 border border-slate-700">
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-yellow-400">
               <Award className="w-5 h-5" />
               Game Summary by {gameFormat === 'quarters' ? 'Quarter' : 'Half'}
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left py-2">Team</th>
+                  <tr className="border-b border-slate-600">
+                    <th className="text-left py-2 text-slate-300">Team</th>
                     {periodScores.map((period, index) => (
-                      <th key={index} className="text-center px-4">{period.periodLabel}</th>
+                      <th key={index} className="text-center px-4 text-slate-300">{period.periodLabel}</th>
                     ))}
-                    <th className="text-center px-4 font-bold">Total</th>
+                    <th className="text-center px-4 font-bold text-yellow-400">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 font-semibold text-blue-400">{teamName}</td>
+                  <tr className="border-b border-slate-700">
+                    <td className="py-2 font-semibold text-yellow-400">{teamName}</td>
                     {periodScores.map((period, index) => (
-                      <td key={index} className="text-center px-4">{period.teamScore}</td>
+                      <td key={index} className="text-center px-4 text-slate-300">{period.teamScore}</td>
                     ))}
-                    <td className="text-center px-4 font-bold text-blue-400">{teamScore}</td>
+                    <td className="text-center px-4 font-bold text-yellow-400">{teamScore}</td>
                   </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-2 font-semibold text-red-400">{opponentName}</td>
+                  <tr className="border-b border-slate-700">
+                    <td className="py-2 font-semibold text-orange-400">{opponentName}</td>
                     {periodScores.map((period, index) => (
-                      <td key={index} className="text-center px-4">{period.opponentScore}</td>
+                      <td key={index} className="text-center px-4 text-slate-300">{period.opponentScore}</td>
                     ))}
-                    <td className="text-center px-4 font-bold text-red-400">{opponentScore}</td>
+                    <td className="text-center px-4 font-bold text-orange-400">{opponentScore}</td>
                   </tr>
                 </tbody>
               </table>
@@ -804,20 +804,20 @@ const BasketballReviewApp = () => {
         )}
         
         {/* Players and Stats */}
-        <div className="mt-6 bg-gray-800 rounded-lg p-4">
+        <div className="mt-6 bg-slate-900 rounded-lg p-4 border border-slate-700">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+            <h2 className="text-xl font-semibold flex items-center gap-2 text-yellow-400">
               <Users className="w-5 h-5" />
               {teamName} Players & Box Score
             </h2>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-400" />
-                <span className="text-sm">Team Fouls: {teamFouls}</span>
+                <AlertCircle className="w-5 h-5 text-amber-400" />
+                <span className="text-sm text-slate-300">Team Fouls: <span className="text-amber-400">{teamFouls}</span></span>
               </div>
               <div className="flex items-center gap-2">
-                <Timer className="w-5 h-5 text-purple-400" />
-                <span className="text-sm">Timeouts: {teamTimeouts}</span>
+                <Timer className="w-5 h-5 text-yellow-400" />
+                <span className="text-sm text-slate-300">Timeouts: <span className="text-yellow-400">{teamTimeouts}</span></span>
               </div>
             </div>
           </div>
@@ -825,14 +825,14 @@ const BasketballReviewApp = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* On Court */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-green-400">On Court</h3>
+              <h3 className="text-lg font-semibold mb-2 text-emerald-400">On Court</h3>
               <div className="space-y-2">
                 {players.filter(p => p.onCourt).map(player => (
                   <div
                     key={player.id}
                     onClick={() => setSelectedPlayer(player.id)}
-                    className={`bg-gray-700 p-2 rounded cursor-pointer ${
-                      selectedPlayer === player.id ? 'ring-2 ring-blue-500' : ''
+                    className={`bg-slate-800 p-2 rounded cursor-pointer transition-all ${
+                      selectedPlayer === player.id ? 'ring-2 ring-yellow-500 bg-slate-700' : 'hover:bg-slate-700'
                     }`}
                   >
                     <div className="flex justify-between items-center">
@@ -844,7 +844,7 @@ const BasketballReviewApp = () => {
                               value={editPlayerName}
                               onChange={(e) => setEditPlayerName(e.target.value)}
                               onKeyPress={(e) => e.key === 'Enter' && savePlayerName()}
-                              className="bg-gray-600 px-2 py-1 rounded text-sm"
+                              className="bg-slate-600 px-2 py-1 rounded text-sm text-white border border-slate-500 focus:border-yellow-500 focus:outline-none"
                               autoFocus
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -853,7 +853,7 @@ const BasketballReviewApp = () => {
                                 e.stopPropagation();
                                 savePlayerName();
                               }}
-                              className="text-green-500 hover:text-green-400"
+                              className="text-emerald-500 hover:text-emerald-400"
                             >
                               <Check className="w-4 h-4" />
                             </button>
@@ -869,21 +869,21 @@ const BasketballReviewApp = () => {
                           </div>
                         ) : (
                           <>
-                            <span className="font-medium">{player.name}</span>
+                            <span className="font-medium text-white">{player.name}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 startEditingPlayer(player.id, player.name);
                               }}
-                              className="text-gray-400 hover:text-white"
+                              className="text-slate-400 hover:text-white"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
                           </>
                         )}
                       </div>
-                      <span className="text-sm text-gray-400">
-                        {formatTime(player.stats.timeOnCourt)} | +/- {player.stats.plusMinus > 0 ? '+' : ''}{player.stats.plusMinus}
+                      <span className="text-sm text-slate-400">
+                        {formatTime(player.stats.timeOnCourt)} | +/- <span className={player.stats.plusMinus >= 0 ? 'text-emerald-400' : 'text-red-400'}>{player.stats.plusMinus > 0 ? '+' : ''}{player.stats.plusMinus}</span>
                       </span>
                     </div>
                   </div>
@@ -893,12 +893,12 @@ const BasketballReviewApp = () => {
             
             {/* Bench */}
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-gray-400">Bench</h3>
+              <h3 className="text-lg font-semibold mb-2 text-slate-400">Bench</h3>
               <div className="space-y-2">
                 {players.filter(p => !p.onCourt).map(player => (
                   <div
                     key={player.id}
-                    className="bg-gray-700 p-2 rounded"
+                    className="bg-slate-800 p-2 rounded"
                   >
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
@@ -909,12 +909,12 @@ const BasketballReviewApp = () => {
                               value={editPlayerName}
                               onChange={(e) => setEditPlayerName(e.target.value)}
                               onKeyPress={(e) => e.key === 'Enter' && savePlayerName()}
-                              className="bg-gray-600 px-2 py-1 rounded text-sm"
+                              className="bg-slate-600 px-2 py-1 rounded text-sm text-white border border-slate-500 focus:border-yellow-500 focus:outline-none"
                               autoFocus
                             />
                             <button
                               onClick={() => savePlayerName()}
-                              className="text-green-500 hover:text-green-400"
+                              className="text-emerald-500 hover:text-emerald-400"
                             >
                               <Check className="w-4 h-4" />
                             </button>
@@ -927,10 +927,10 @@ const BasketballReviewApp = () => {
                           </div>
                         ) : (
                           <>
-                            <span className="font-medium">{player.name}</span>
+                            <span className="font-medium text-white">{player.name}</span>
                             <button
                               onClick={() => startEditingPlayer(player.id, player.name)}
-                              className="text-gray-400 hover:text-white"
+                              className="text-slate-400 hover:text-white"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
@@ -939,7 +939,7 @@ const BasketballReviewApp = () => {
                       </div>
                       <button
                         onClick={() => initiateSubstitution(player.id)}
-                        className="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs"
+                        className="bg-emerald-600 hover:bg-emerald-700 px-2 py-1 rounded text-xs transition-colors"
                       >
                         Sub In
                       </button>
@@ -954,40 +954,40 @@ const BasketballReviewApp = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2">Player</th>
-                  <th className="text-center px-2">MIN</th>
-                  <th className="text-center px-2">PTS</th>
-                  <th className="text-center px-2">FG</th>
-                  <th className="text-center px-2">FG%</th>
-                  <th className="text-center px-2">FT</th>
-                  <th className="text-center px-2">FT%</th>
-                  <th className="text-center px-2">REB</th>
-                  <th className="text-center px-2">AST</th>
-                  <th className="text-center px-2">STL</th>
-                  <th className="text-center px-2">BLK</th>
-                  <th className="text-center px-2">TO</th>
-                  <th className="text-center px-2">PF</th>
-                  <th className="text-center px-2">+/-</th>
+                <tr className="border-b border-slate-600">
+                  <th className="text-left py-2 text-slate-300">Player</th>
+                  <th className="text-center px-2 text-slate-300">MIN</th>
+                  <th className="text-center px-2 text-slate-300">PTS</th>
+                  <th className="text-center px-2 text-slate-300">FG</th>
+                  <th className="text-center px-2 text-slate-300">FG%</th>
+                  <th className="text-center px-2 text-slate-300">FT</th>
+                  <th className="text-center px-2 text-slate-300">FT%</th>
+                  <th className="text-center px-2 text-slate-300">REB</th>
+                  <th className="text-center px-2 text-slate-300">AST</th>
+                  <th className="text-center px-2 text-slate-300">STL</th>
+                  <th className="text-center px-2 text-slate-300">BLK</th>
+                  <th className="text-center px-2 text-slate-300">TO</th>
+                  <th className="text-center px-2 text-slate-300">PF</th>
+                  <th className="text-center px-2 text-slate-300">+/-</th>
                 </tr>
               </thead>
               <tbody>
                 {players.map(player => (
-                  <tr key={player.id} className="border-b border-gray-700">
-                    <td className="py-2">{player.name}</td>
-                    <td className="text-center">{formatTime(player.stats.timeOnCourt)}</td>
-                    <td className="text-center font-semibold">{player.stats.points}</td>
-                    <td className="text-center">{player.stats.fgMade}/{player.stats.fgAttempts}</td>
-                    <td className="text-center">{calculatePercentage(player.stats.fgMade, player.stats.fgAttempts)}%</td>
-                    <td className="text-center">{player.stats.ftMade}/{player.stats.ftAttempts}</td>
-                    <td className="text-center">{calculatePercentage(player.stats.ftMade, player.stats.ftAttempts)}%</td>
-                    <td className="text-center">{player.stats.offRebounds + player.stats.defRebounds}</td>
-                    <td className="text-center">{player.stats.assists}</td>
-                    <td className="text-center">{player.stats.steals}</td>
-                    <td className="text-center">{player.stats.blocks}</td>
-                    <td className="text-center">{player.stats.turnovers}</td>
-                    <td className="text-center">{player.stats.fouls}</td>
-                    <td className="text-center font-semibold">
+                  <tr key={player.id} className="border-b border-slate-700 hover:bg-slate-800">
+                    <td className="py-2 text-white">{player.name}</td>
+                    <td className="text-center text-slate-300">{formatTime(player.stats.timeOnCourt)}</td>
+                    <td className="text-center font-semibold text-yellow-400">{player.stats.points}</td>
+                    <td className="text-center text-slate-300">{player.stats.fgMade}/{player.stats.fgAttempts}</td>
+                    <td className="text-center text-slate-300">{calculatePercentage(player.stats.fgMade, player.stats.fgAttempts)}%</td>
+                    <td className="text-center text-slate-300">{player.stats.ftMade}/{player.stats.ftAttempts}</td>
+                    <td className="text-center text-slate-300">{calculatePercentage(player.stats.ftMade, player.stats.ftAttempts)}%</td>
+                    <td className="text-center text-slate-300">{player.stats.offRebounds + player.stats.defRebounds}</td>
+                    <td className="text-center text-slate-300">{player.stats.assists}</td>
+                    <td className="text-center text-slate-300">{player.stats.steals}</td>
+                    <td className="text-center text-slate-300">{player.stats.blocks}</td>
+                    <td className="text-center text-slate-300">{player.stats.turnovers}</td>
+                    <td className="text-center text-slate-300">{player.stats.fouls}</td>
+                    <td className={`text-center font-semibold ${player.stats.plusMinus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {player.stats.plusMinus > 0 ? '+' : ''}{player.stats.plusMinus}
                     </td>
                   </tr>
