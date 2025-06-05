@@ -19,6 +19,7 @@ export interface Player {
   id: number;
   name: string;
   onCourt: boolean;
+  profileImageUrl?: string;
   stats: PlayerStats;
   startTime: number | null;
 }
