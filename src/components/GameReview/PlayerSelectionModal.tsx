@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Users } from 'lucide-react';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface PlayerSelectionModalProps {
   isOpen: boolean;
@@ -40,12 +41,23 @@ export const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
                 onSelectPlayer(player.id);
                 onClose();
               }}
-              className="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-3"
             >
-              <div className="font-medium text-white">{player.name}</div>
-              {player.position && (
-                <div className="text-sm text-slate-400">{player.position}</div>
-              )}
+              {/* Player Image */}
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600 flex-shrink-0">
+                <PlayerImage 
+                  profileImageUrl={player.profileImageUrl}
+                  className="w-full h-full object-cover"
+                  alt={player.name}
+                />
+              </div>
+              
+              <div>
+                <div className="font-medium text-white">{player.name}</div>
+                {player.position && (
+                  <div className="text-sm text-slate-400">{player.position}</div>
+                )}
+              </div>
             </button>
           ))}
         </div>

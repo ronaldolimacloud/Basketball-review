@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getUrl } from 'aws-amplify/storage';
 import { User } from 'lucide-react';
+import { getImageUrl } from '../../utils/imageUtils';
 
 interface PlayerImageProps {
   profileImageUrl: string | null | undefined;
@@ -17,31 +17,18 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
     let isMounted = true;
     
     const loadImage = async () => {
-      if (!profileImageUrl) {
-        if (isMounted) {
-          setImageUrl('/default-player.png');
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
-        const urlResult = await getUrl({
-          path: profileImageUrl,
-          options: {
-            // Use caching to prevent unnecessary reloads
-            cacheControl: 'max-age=3600', // Cache for 1 hour
-            validateObjectExistence: true
-          }
-        });
+        console.log('PlayerImage: Loading image for path:', profileImageUrl);
+        const url = await getImageUrl(profileImageUrl);
+        console.log('PlayerImage: Got URL:', url);
         
         if (isMounted) {
-          setImageUrl(urlResult.url.toString());
+          setImageUrl(url);
           setLoading(false);
           setError(false);
         }
       } catch (err) {
-        console.error('Error loading image:', err);
+        console.error('PlayerImage: Error loading image:', err);
         if (isMounted) {
           setImageUrl('/default-player.png');
           setLoading(false);
@@ -51,6 +38,7 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
     };
 
     setLoading(true);
+    setError(false);
     loadImage();
 
     // Cleanup function to prevent state updates if component unmounts

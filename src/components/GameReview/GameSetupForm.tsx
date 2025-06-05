@@ -3,6 +3,7 @@ import { generateClient } from 'aws-amplify/data';
 import { Play, Users, Settings, User } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat } from '../../types/game.types';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface GameSetupFormProps {
   onSetupComplete: (team: string, opponent: string, format: GameFormat, players: any[]) => void;
@@ -205,28 +206,11 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
                       <div className="flex items-center gap-3">
                         {/* Profile Picture */}
                         <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {player.profileImageUrl ? (
-                            <img 
-                              src={player.profileImageUrl} 
-                              alt={player.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = '/default-player.png';
-                              }}
-                            />
-                          ) : (
-                            <img 
-                              src="/default-player.png" 
-                              alt="Default player"
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                                const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                                if (nextElement) nextElement.style.display = 'block';
-                              }}
-                            />
-                          )}
-                          <User className="w-5 h-5 text-slate-500 hidden" />
+                          <PlayerImage 
+                            profileImageUrl={player.profileImageUrl}
+                            className="w-full h-full object-cover"
+                            alt={player.name}
+                          />
                         </div>
                         
                         <div>

@@ -4,6 +4,7 @@ import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
 import { PlayerImage } from './PlayerImage';
+import { StorageDiagnostic } from '../StorageDiagnostic';
 
 interface PlayerProfilesProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -15,6 +16,14 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    name: '',
+    position: '',
+    height: '',
+    weight: '',
+    jerseyNumber: '',
+    profileImage: null as File | null
+  });
+  const [editForm, setEditForm] = useState({
     name: '',
     position: '',
     height: '',
@@ -34,7 +43,13 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setFormData({ ...formData, profileImage: file });
+      if (editingPlayer) {
+        // For edit mode
+        setEditForm({ ...editForm, profileImage: file });
+      } else {
+        // For add mode
+        setFormData({ ...formData, profileImage: file });
+      }
       
       // Create preview URL
       const reader = new FileReader();
@@ -48,20 +63,27 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   const uploadProfileImage = async (file: File, playerId: string): Promise<string | null> => {
     try {
       setUploading(true);
-      const fileName = `player-images/${playerId}-${Date.now()}-${file.name}`;
+      console.log('Starting upload for player:', playerId, 'file:', file.name);
+      
+      // Clean the filename and create a proper path
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `player-images/${playerId}-${Date.now()}-${cleanFileName}`;
+      
+      console.log('Upload path:', fileName);
       
       const result = await uploadData({
         path: fileName,
         data: file,
         options: {
-          contentType: file.type
+          contentType: file.type || 'image/jpeg'
         }
       }).result;
 
+      console.log('Upload successful:', result);
       return fileName;
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     } finally {
       setUploading(false);
@@ -127,16 +149,34 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     }
   };
 
-  const handleUpdatePlayer = async (playerId: string, updatedData: any) => {
+  const handleUpdatePlayer = async (playerId: string, updatedData: any, profileImage?: File | null) => {
     try {
+      console.log('Updating player:', playerId, 'with data:', updatedData);
+      
+      // If there's a new profile image, upload it first
+      if (profileImage) {
+        console.log('Uploading new profile image...');
+        const imageUrl = await uploadProfileImage(profileImage, playerId);
+        if (imageUrl) {
+          updatedData.profileImageUrl = imageUrl;
+          console.log('Image uploaded successfully, URL:', imageUrl);
+        } else {
+          console.error('Failed to upload image');
+          return;
+        }
+      }
+      
+      console.log('Updating player in database with:', updatedData);
       await client.models.Player.update({
         id: playerId,
         ...updatedData
       });
       setEditingPlayer(null);
+      setPreviewUrl(null);
       fetchPlayers();
     } catch (error) {
       console.error('Error updating player:', error);
+      alert(`Failed to update player: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -165,6 +205,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
   const resetForm = () => {
     setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+    setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
     setPreviewUrl(null);
     setShowAddForm(false);
     setEditingPlayer(null);
@@ -183,6 +224,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
   return (
     <div className="space-y-6">
+      {/* Storage Diagnostic */}
+      <StorageDiagnostic />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -308,6 +352,166 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
         </div>
       )}
 
+      {/* Edit Player Modal */}
+      {editingPlayer && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-lg p-6 max-w-2xl w-full border border-slate-700">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+              <span>Edit Player</span>
+              <button 
+                onClick={() => {
+                  setEditingPlayer(null);
+                  setPreviewUrl(null);
+                }}
+                className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </h3>
+            
+            {players.filter(p => p.id === editingPlayer).map(player => {
+              return (
+                <div key={player.id} className="space-y-4">
+                  {/* Profile Image Upload */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Profile Picture</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center overflow-hidden">
+                          {previewUrl ? (
+                            <img 
+                              src={previewUrl} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <PlayerImage 
+                              profileImageUrl={player.profileImageUrl}
+                              className="w-full h-full object-cover"
+                              alt={player.name}
+                            />
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="absolute -bottom-1 -right-1 bg-yellow-500 rounded-full p-1">
+                          <Camera className="w-3 h-3 text-black" />
+                        </div>
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        <p>Click to change profile picture</p>
+                        <p className="text-xs">JPG, PNG up to 10MB</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-yellow-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Position</label>
+                      <select
+                        value={editForm.position}
+                        onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-yellow-500 focus:outline-none"
+                      >
+                        <option value="">Select Position</option>
+                        {positions.map(pos => (
+                          <option key={pos} value={pos}>{pos}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Height</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 6'2&quot;"
+                        value={editForm.height}
+                        onChange={(e) => setEditForm({ ...editForm, height: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-yellow-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Weight</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 185 lbs"
+                        value={editForm.weight}
+                        onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-yellow-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Jersey #</label>
+                      <input
+                        type="number"
+                        value={editForm.jerseyNumber}
+                        onChange={(e) => setEditForm({ ...editForm, jerseyNumber: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-yellow-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 mt-6 justify-end">
+                    <button
+                      onClick={() => {
+                        setEditingPlayer(null);
+                        setPreviewUrl(null);
+                        setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+                      }}
+                      className="bg-slate-600 hover:bg-slate-700 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!editForm.name.trim()) return;
+                        
+                        const updatedData = {
+                          name: editForm.name,
+                          position: editForm.position || undefined,
+                          height: editForm.height || undefined,
+                          weight: editForm.weight || undefined,
+                          jerseyNumber: editForm.jerseyNumber ? parseInt(editForm.jerseyNumber) : undefined,
+                        };
+                        
+                        handleUpdatePlayer(player.id, updatedData, editForm.profileImage);
+                      }}
+                      disabled={!editForm.name.trim() || uploading}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"
+                    >
+                      {uploading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      
       {/* Players Grid */}
       {players.length === 0 ? (
         <div className="text-center py-12">
@@ -338,7 +542,17 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                   </div>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => setEditingPlayer(player.id)}
+                      onClick={() => {
+                        setEditingPlayer(player.id);
+                        setEditForm({
+                          name: player.name,
+                          position: player.position || '',
+                          height: player.height || '',
+                          weight: player.weight || '',
+                          jerseyNumber: player.jerseyNumber?.toString() || '',
+                          profileImage: null
+                        });
+                      }}
                       className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
