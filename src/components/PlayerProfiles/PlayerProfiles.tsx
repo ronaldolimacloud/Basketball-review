@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera, Upload, Users } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera, Upload } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
-import { uploadData, getUrl } from 'aws-amplify/storage';
+import { uploadData } from 'aws-amplify/storage';
+import { PlayerImage } from './PlayerImage';
 
 interface PlayerProfilesProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -44,70 +45,10 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     }
   };
 
-  const getImageUrl = async (imagePath: string): Promise<string> => {
-    try {
-      const urlResult = await getUrl({
-        path: imagePath
-      });
-      return urlResult.url.toString();
-    } catch (error) {
-      console.error('Error getting image URL:', error);
-      return '/default-player.png';
-    }
-  };
-
-  // Component to handle async image loading
-  const PlayerImage: React.FC<{ player: any; className: string; alt: string }> = ({ player, className, alt }) => {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      const loadImage = async () => {
-        if (player.profileImageUrl) {
-          try {
-            const url = await getImageUrl(player.profileImageUrl);
-            setImageUrl(url);
-          } catch (error) {
-            console.error('Error loading image:', error);
-            setImageUrl('/default-player.png');
-          }
-        } else {
-          setImageUrl('/default-player.png');
-        }
-        setLoading(false);
-      };
-
-      loadImage();
-    }, [player.profileImageUrl]);
-
-    if (loading) {
-      return (
-        <div className={className}>
-          <div className="w-full h-full flex items-center justify-center bg-slate-800">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <img 
-        src={imageUrl || '/default-player.png'} 
-        alt={alt}
-        className={className}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src = '/default-player.png';
-        }}
-      />
-    );
-  };
-
   const uploadProfileImage = async (file: File, playerId: string): Promise<string | null> => {
     try {
       setUploading(true);
       const fileName = `player-images/${playerId}-${Date.now()}-${file.name}`;
-      
-      console.log('Uploading file:', fileName);
       
       const result = await uploadData({
         path: fileName,
@@ -117,10 +58,6 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
         }
       }).result;
 
-      console.log('Upload result:', result);
-
-      // Return the path instead of generating URL immediately
-      // We'll generate URLs when displaying images
       return fileName;
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -172,28 +109,19 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
       // Upload profile image if provided
       if (formData.profileImage && newPlayer.data) {
-        console.log('Uploading profile image for player:', newPlayer.data.id);
         const imageUrl = await uploadProfileImage(formData.profileImage, newPlayer.data.id);
         if (imageUrl) {
-          console.log('Updating player with image URL:', imageUrl);
-          const updateResult = await client.models.Player.update({
+          await client.models.Player.update({
             id: newPlayer.data.id,
             profileImageUrl: imageUrl
           });
-          console.log('Player update result:', updateResult);
-        } else {
-          console.error('Failed to get image URL after upload');
         }
       }
 
       setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
       setPreviewUrl(null);
       setShowAddForm(false);
-      
-      // Wait a moment for the image to be processed, then refresh
-      setTimeout(() => {
-        fetchPlayers();
-      }, 1000);
+      fetchPlayers();
     } catch (error) {
       console.error('Error creating player:', error);
     }
@@ -256,35 +184,21 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="bg-yellow-500 p-2 rounded-lg">
-                <Users className="w-6 h-6 text-black" />
-              </div>
-              Team Roster
-            </h2>
-            <p className="text-slate-400 mt-2 text-lg">Manage your player profiles and track career statistics</p>
-            <div className="flex items-center gap-6 mt-3 text-sm text-slate-500">
-              <span className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                {players.filter(p => p.isActive).length} Active Players
-              </span>
-              <span className="flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                {players.reduce((sum, p) => sum + (p.totalGamesPlayed || 0), 0)} Total Games
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-xl font-bold text-black transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-5 h-5" />
-            Add New Player
-          </button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-yellow-400 flex items-center gap-2">
+            <User className="w-6 h-6" />
+            Player Profiles
+          </h2>
+          <p className="text-slate-400 mt-1">Manage your team's player roster and track career statistics</p>
         </div>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg font-medium text-black transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Player
+        </button>
       </div>
 
       {/* Add Player Form */}
@@ -396,120 +310,97 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
       {/* Players Grid */}
       {players.length === 0 ? (
-        <div className="text-center py-16 bg-gradient-to-b from-slate-900 to-slate-800 rounded-xl border border-slate-700">
-          <div className="bg-slate-800 w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center border-2 border-slate-600">
-            <Users className="w-12 h-12 text-slate-500" />
-          </div>
-          <h3 className="text-2xl font-bold text-white mb-3">Build Your Team Roster</h3>
-          <p className="text-slate-400 mb-8 max-w-md mx-auto">Start creating your basketball team by adding player profiles. Track stats, manage positions, and build your championship squad.</p>
+        <div className="text-center py-12">
+          <User className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-slate-400 mb-2">No players found</h3>
+          <p className="text-slate-500 mb-4">Start by adding your first player to the roster</p>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-8 py-4 rounded-xl font-bold text-black transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="bg-yellow-500 hover:bg-yellow-600 px-6 py-3 rounded-lg font-medium text-black transition-colors"
           >
-            <Plus className="w-5 h-5 inline mr-2" />
             Add Your First Player
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {players.map((player) => {
             const averages = calculatePlayerAverages(player);
             return (
-              <div key={player.id} className="group relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-xl overflow-hidden border border-slate-700 hover:border-yellow-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/10">
-                {/* Action Buttons - Top Right */}
-                <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div key={player.id} className="bg-slate-900 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors">
+                {/* Player Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{player.name}</h3>
+                    <div className="flex items-center gap-3 text-sm text-slate-400 mt-1">
+                      {player.position && <span className="bg-slate-800 px-2 py-0.5 rounded">{player.position}</span>}
+                      {player.jerseyNumber && <span>#{player.jerseyNumber}</span>}
+                    </div>
+                  </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setEditingPlayer(player.id)}
-                      className="p-1.5 rounded-full bg-slate-900/80 text-slate-400 hover:text-yellow-400 hover:bg-slate-800 transition-colors backdrop-blur-sm"
+                      className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     >
-                      <Edit2 className="w-3 h-3" />
+                      <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeletePlayer(player.id)}
-                      className="p-1.5 rounded-full bg-slate-900/80 text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors backdrop-blur-sm"
+                      className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                                 {/* Player Photo */}
-                 <div className="relative bg-gradient-to-b from-slate-700 to-slate-800 p-4">
-                   <div className="w-32 h-32 mx-auto rounded-lg bg-slate-800 border-2 border-slate-600 overflow-hidden shadow-lg">
-                     <PlayerImage 
-                       player={player}
-                       className="w-full h-full object-cover"
-                       alt={player.name}
-                     />
-                   </div>
-                 </div>
-
-                {/* Player Info */}
-                <div className="p-4 space-y-3">
-                  {/* Name and Jersey */}
-                  <div className="text-center">
-                    <h3 className="text-lg font-bold text-white mb-1">{player.name}</h3>
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      {player.jerseyNumber && (
-                        <span className="bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold text-xs">
-                          #{player.jerseyNumber}
-                        </span>
-                      )}
-                      {player.position && (
-                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-medium text-xs">
-                          {player.position}
-                        </span>
-                      )}
-                    </div>
+                {/* Player Image */}
+                <div className="mb-4">
+                  <div className="w-24 h-24 mx-auto rounded-full overflow-hidden border-2 border-slate-700">
+                    <PlayerImage 
+                      profileImageUrl={player.profileImageUrl}
+                      className="w-full h-full object-cover"
+                      alt={player.name}
+                    />
                   </div>
+                </div>
 
-                  {/* Physical Stats */}
-                  {(player.height || player.weight) && (
-                    <div className="flex justify-center gap-4 text-xs text-slate-400">
-                      {player.height && <span>{player.height}</span>}
-                      {player.weight && <span>{player.weight}</span>}
+                {/* Physical Stats */}
+                {(player.height || player.weight) && (
+                  <div className="flex gap-4 text-sm text-slate-400 mb-4">
+                    {player.height && <span>Height: {player.height}</span>}
+                    {player.weight && <span>Weight: {player.weight}</span>}
+                  </div>
+                )}
+                {/* Career Stats */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <Trophy className="w-4 h-4 text-yellow-400" />
+                    <span>Games Played: {player.totalGamesPlayed || 0}</span>
+                  </div>
+                  
+                  {player.totalGamesPlayed > 0 && (
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        <span className="text-slate-400">PPG:</span>
+                        <span className="font-medium text-white">{averages.ppg}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        <span className="text-slate-400">RPG:</span>
+                        <span className="font-medium text-white">{averages.rpg}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        <span className="text-slate-400">APG:</span>
+                        <span className="font-medium text-white">{averages.apg}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-emerald-400" />
+                        <span className="text-slate-400">FG%:</span>
+                        <span className="font-medium text-white">{averages.fgPct}</span>
+                      </div>
                     </div>
                   )}
-
-                  {/* Career Stats */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-center gap-1 text-xs text-slate-400">
-                      <Trophy className="w-3 h-3 text-yellow-400" />
-                      <span>{player.totalGamesPlayed || 0} GP</span>
-                    </div>
-                    
-                    {player.totalGamesPlayed > 0 && (
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="text-center p-2 bg-slate-800/50 rounded border border-slate-700">
-                          <div className="font-bold text-yellow-400">{averages.ppg}</div>
-                          <div className="text-slate-500">PPG</div>
-                        </div>
-                        <div className="text-center p-2 bg-slate-800/50 rounded border border-slate-700">
-                          <div className="font-bold text-emerald-400">{averages.rpg}</div>
-                          <div className="text-slate-500">RPG</div>
-                        </div>
-                        <div className="text-center p-2 bg-slate-800/50 rounded border border-slate-700">
-                          <div className="font-bold text-purple-400">{averages.apg}</div>
-                          <div className="text-slate-500">APG</div>
-                        </div>
-                        <div className="text-center p-2 bg-slate-800/50 rounded border border-slate-700">
-                          <div className="font-bold text-cyan-400">{averages.fgPct}%</div>
-                          <div className="text-slate-500">FG%</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Status */}
-                  <div className="text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                      player.isActive ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-700' : 'bg-slate-800 text-slate-400 border border-slate-700'
-                    }`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${player.isActive ? 'bg-emerald-400' : 'bg-slate-500'}`}></div>
-                      {player.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
                 </div>
               </div>
             );
@@ -518,4 +409,4 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       )}
     </div>
   );
-}; 
+};
