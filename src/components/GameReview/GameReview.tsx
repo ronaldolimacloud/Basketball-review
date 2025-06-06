@@ -9,6 +9,7 @@ import { GameClock } from '../GameClock';
 import { ScoreBoard } from '../ScoreBoard';
 import { StatButtons, BoxScore } from '../StatTracker';
 import { GameSetupForm } from './GameSetupForm';
+import { SubstitutionModal } from '../PlayerManagement/SubstitutionModal';
 
 // Hooks
 import { useGameClock } from '../../hooks/useGameClock';
@@ -17,6 +18,9 @@ import { useGameStats } from '../../hooks/useGameStats';
 // Utils
 import { calculateTeamFouls } from '../../utils/statCalculations';
 import { createPeriodScore, getMaxPeriods } from '../../utils/gameHelpers';
+
+// Icons
+import { Play, Users, History, BarChart3 } from 'lucide-react';
 
 interface GameReviewProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -64,14 +68,32 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   const [opponentTimeouts, setOpponentTimeouts] = useState(0);
   const [periodScores, setPeriodScores] = useState<PeriodScore[]>([]);
   const [periodStartScore, setPeriodStartScore] = useState({ team: 0, opponent: 0 });
-  const [gameNotes, setGameNotes] = useState('');
-  
-  // Player states
-  const [showPlayerSelection, setShowPlayerSelection] = useState(false);
+
+  // Substitution state
+  const [isSubstitutionModalOpen, setIsSubstitutionModalOpen] = useState(false);
+  const [playerComingIn, setPlayerComingIn] = useState<GamePlayer | null>(null);
+
   
   // Initialize game stats hook - this manages the actual player state
   const gameStats = useGameStats(initialPlayers);
-  const gameClock = useGameClock(gameStats.setPlayers);
+  const gameClock = useGameClock((updater) => {
+    gameStats.setPlayers((prevPlayers) => {
+      // Convert GamePlayer[] to Player[] for the updater function
+      const convertedPlayers = prevPlayers.map((player, index) => ({
+        ...player,
+        id: parseInt(player.id.replace(/\D/g, '')) || index,
+      }));
+      
+      // Apply the updater function
+      const updatedPlayers = updater(convertedPlayers);
+      
+      // Convert back to GamePlayer[]
+      return updatedPlayers.map((player, index) => ({
+        ...player,
+        id: prevPlayers[index]?.id || player.id.toString(),
+      }));
+    });
+  });
 
   // Update time on court every second when clock is running
   useEffect(() => {
@@ -159,6 +181,41 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
     gameClock.resetClock();
   };
 
+  const handleSubstitutionRequest = (player: GamePlayer) => {
+    setPlayerComingIn(player);
+    setIsSubstitutionModalOpen(true);
+  };
+
+  const handleSubstitution = (playerOutId: number) => {
+    if (!playerComingIn) return;
+    
+    // Find the actual string ID of the player going out
+    const playerOut = gameStats.players.find(p => p.onCourt && 
+      (parseInt(p.id.replace(/\D/g, '')) || 0) === playerOutId);
+    
+    if (!playerOut) {
+      console.error('Player to substitute out not found!');
+      return;
+    }
+    
+    console.log('Substitution:', {
+      playerInId: playerComingIn.id,
+      playerInName: playerComingIn.name,
+      playerOutId: playerOut.id,
+      playerOutName: playerOut.name,
+      currentTime: gameClock.gameClock
+    });
+    
+    gameStats.substitutePlayer(playerComingIn.id, playerOut.id, gameClock.gameClock);
+    setIsSubstitutionModalOpen(false);
+    setPlayerComingIn(null);
+  };
+
+  const handleCancelSubstitution = () => {
+    setIsSubstitutionModalOpen(false);
+    setPlayerComingIn(null);
+  };
+
   const handleFinishGame = async () => {
     if (!currentGame) return;
 
@@ -170,7 +227,6 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         awayTeamScore: opponentScore,
         isCompleted: true,
         totalDuration: gameClock.gameClock,
-        notes: gameNotes,
         periodScores: JSON.stringify(periodScores)
       });
 
@@ -234,7 +290,6 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
       setCurrentPeriod(1);
       setPeriodScores([]);
       setPeriodStartScore({ team: 0, opponent: 0 });
-      setGameNotes('');
       gameClock.resetClock();
       
     } catch (error) {
@@ -258,105 +313,182 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Game Header */}
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-yellow-400 mb-2">Live Game Review</h2>
-        <p className="text-xl text-slate-400">{teamName} vs {opponentName}</p>
-        <div className="mt-2 flex items-center justify-center gap-4 text-sm text-slate-500">
-          <span>Game Format: {gameFormat === 'quarters' ? '4 Quarters' : '2 Halves'}</span>
-          <span>•</span>
-          <span>Players: {gameStats.players.length}</span>
-        </div>
-      </div>
-
-      {/* Main Game Interface */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Video Player */}
-        <VideoPlayer />
-        
-        {/* Game Controls */}
-        <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-          <GameClock
-            gameClock={gameClock.gameClock}
-            isClockRunning={gameClock.isClockRunning}
-            currentPeriod={currentPeriod}
-            gameFormat={gameFormat}
-            onClockToggle={gameClock.toggleClock}
-            onPeriodChange={setCurrentPeriod}
-            onEndPeriod={handleEndPeriod}
-          />
+    <div className="h-full flex flex-col space-y-6">
+      {/* Game Header - More compact for dashboard */}
+      <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-xl p-6 border border-zinc-700">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-yellow-400 mb-2">Live Game Review</h2>
+            <p className="text-xl text-zinc-300">{teamName} vs {opponentName}</p>
+            <div className="mt-2 flex items-center gap-4 text-sm text-zinc-400">
+              <span className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                Game Format: {gameFormat === 'quarters' ? '4 Quarters' : '2 Halves'}
+              </span>
+              <span>•</span>
+              <span>Active Players: {gameStats.players.filter(p => p.onCourt).length}</span>
+              <span>•</span>
+              <span>Total Players: {gameStats.players.length}</span>
+            </div>
+          </div>
           
-          <ScoreBoard
-            teamName={teamName}
-            opponentName={opponentName}
-            teamScore={teamScore}
-            opponentScore={opponentScore}
-            teamFouls={teamFouls}
-            teamTimeouts={teamTimeouts}
-            opponentTimeouts={opponentTimeouts}
-            onOpponentScore={handleOpponentScore}
-            onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
-            onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
-          />
-          
-          <StatButtons
-            selectedPlayerName={gameStats.selectedPlayerName}
-            onStatUpdate={handleStatUpdate}
-          />
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-3xl font-bold text-yellow-400">{teamScore} - {opponentScore}</div>
+              <div className="text-sm text-zinc-400">Current Score</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Player Selection */}
-      <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-lg font-semibold text-yellow-400 mb-3">Select Player for Stats</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-          {gameStats.players.map((player) => (
-            <button
-              key={player.id}
-              onClick={() => gameStats.setSelectedPlayerId(player.id)}
-              className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                gameStats.selectedPlayerId === player.id
-                  ? 'bg-yellow-500 text-black'
-                  : player.onCourt
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              <div>{player.name}</div>
-              <div className="text-xs opacity-75">
-                {player.onCourt ? 'On Court' : 'Bench'} • {player.stats.points}pts
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Game Notes */}
-      <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-lg font-semibold text-yellow-400 mb-3">Game Notes</h3>
-        <textarea
-          value={gameNotes}
-          onChange={(e) => setGameNotes(e.target.value)}
-          placeholder="Add any notes about the game..."
-          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-yellow-500 focus:outline-none resize-vertical"
-          rows={3}
-        />
-      </div>
-
-      {/* Box Score and Finish Game */}
-      <div className="space-y-4">
-        <BoxScore players={convertToLegacyPlayers(gameStats.players)} teamName={teamName} />
+      {/* Main Dashboard Grid */}
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 min-h-0">
         
-        <div className="text-center">
-          <button
-            onClick={handleFinishGame}
-            className="bg-emerald-600 hover:bg-emerald-700 px-8 py-3 rounded-lg font-bold text-white transition-colors text-lg"
-          >
-            Finish & Save Game
-          </button>
+        {/* Left Column - Video Player */}
+        <div className="xl:col-span-2 flex flex-col min-h-0">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 flex-1 flex flex-col">
+            <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
+              <Play className="w-5 h-5" />
+              Game Video Analysis
+            </h3>
+            <div className="flex-1 min-h-0">
+              <VideoPlayer />
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Game Controls */}
+        <div className="flex flex-col space-y-4 min-h-0">
+          
+          {/* Game Clock Card */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
+            <GameClock
+              gameClock={gameClock.gameClock}
+              isClockRunning={gameClock.isClockRunning}
+              currentPeriod={currentPeriod}
+              gameFormat={gameFormat}
+              onClockToggle={gameClock.toggleClock}
+              onPeriodChange={setCurrentPeriod}
+              onEndPeriod={handleEndPeriod}
+            />
+          </div>
+          
+          {/* ScoreBoard Card */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
+            <ScoreBoard
+              teamName={teamName}
+              opponentName={opponentName}
+              teamScore={teamScore}
+              opponentScore={opponentScore}
+              teamFouls={teamFouls}
+              teamTimeouts={teamTimeouts}
+              opponentTimeouts={opponentTimeouts}
+              onOpponentScore={handleOpponentScore}
+              onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
+              onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
+            />
+          </div>
+          
+          {/* Stats Buttons Card */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 flex-1">
+            <StatButtons
+              selectedPlayerName={gameStats.selectedPlayerName}
+              onStatUpdate={handleStatUpdate}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Bottom Section - Player Selection */}
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Player Management */}
+        <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
+          <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Player Management
+          </h3>
+          
+          {/* On Court Players */}
+          <div className="mb-6">
+            <h4 className="text-md font-medium text-emerald-400 mb-3">On Court ({gameStats.players.filter(p => p.onCourt).length}/5)</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              {gameStats.players.filter(p => p.onCourt).map((player) => (
+                <button
+                  key={player.id}
+                  onClick={() => gameStats.setSelectedPlayerId(player.id)}
+                  className={`p-3 rounded-lg text-left transition-all ${
+                    gameStats.selectedPlayerId === player.id
+                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg border-2 border-yellow-400'
+                      : 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600'
+                  }`}
+                >
+                  <div className="font-medium text-sm">{player.name}</div>
+                  <div className="text-xs opacity-75 mt-1">
+                    {player.stats.points}pts • {player.stats.assists}ast • {player.stats.fouls}f
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bench Players */}
+          <div>
+            <h4 className="text-md font-medium text-zinc-400 mb-3">Bench ({gameStats.players.filter(p => !p.onCourt).length})</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {gameStats.players.filter(p => !p.onCourt).map((player) => (
+                <div
+                  key={player.id}
+                  className="p-3 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-300 flex justify-between items-center"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{player.name}</div>
+                    <div className="text-xs opacity-75 mt-1">
+                      {player.stats.points}pts • {player.stats.assists}ast • {player.stats.fouls}f
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleSubstitutionRequest(player)}
+                    className="ml-2 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-xs transition-colors"
+                  >
+                    Sub In
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Box Score - Full Width */}
+      <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
+        <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5" />
+          Live Box Score
+        </h3>
+        <div className="overflow-x-auto">
+          <BoxScore players={convertToLegacyPlayers(gameStats.players)} teamName={teamName} />
+        </div>
+      </div>
+
+      {/* Finish Game Button */}
+      <div className="text-center pt-4 border-t border-zinc-700">
+        <button
+          onClick={handleFinishGame}
+          className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 px-12 py-4 rounded-xl font-bold text-white transition-all transform hover:scale-105 shadow-lg text-lg"
+        >
+          🏁 Finish & Save Game
+        </button>
+      </div>
+
+      {/* Substitution Modal */}
+      <SubstitutionModal
+        isOpen={isSubstitutionModalOpen}
+        playerComingIn={playerComingIn ? convertToLegacyPlayers([playerComingIn])[0] : null}
+        playersOnCourt={convertToLegacyPlayers(gameStats.players.filter(p => p.onCourt))}
+        onSubstitute={handleSubstitution}
+        onCancel={handleCancelSubstitution}
+      />
     </div>
   );
 }; 

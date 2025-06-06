@@ -114,16 +114,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
   }, [showControls, isPlaying]);
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg p-6 border border-slate-700 shadow-2xl">
-      <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 text-yellow-400">
-        <Play className="w-6 h-6" />
-        Enhanced Video Player
-      </h2>
-      
+    <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-lg p-6 border border-zinc-700 shadow-2xl">
       {!videoSrc ? (
-        <div className="border-2 border-dashed border-slate-600 rounded-xl p-12 text-center bg-gradient-to-b from-slate-800 to-slate-900 hover:border-yellow-500 transition-colors">
-          <Upload className="w-16 h-16 mx-auto mb-6 text-slate-400" />
-          <p className="text-slate-300 mb-4 text-lg">Drop your game video here or click to upload</p>
+        <div className="border-2 border-dashed border-zinc-600 rounded-xl p-12 text-center bg-gradient-to-b from-zinc-800 to-zinc-900 hover:border-yellow-500 transition-colors">
+          <Upload className="w-16 h-16 mx-auto mb-6 text-zinc-400" />
+          <p className="text-zinc-300 mb-4 text-lg">Drop your game video here or click to upload</p>
           <label className="cursor-pointer">
             <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg">
               Choose Video File
@@ -161,12 +156,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                 max="100"
                 value={duration ? (currentTime / duration) * 100 : 0}
                 onChange={handleSeek}
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider hover:h-2 transition-all"
+                className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider hover:h-2 transition-all"
                 style={{
                   background: `linear-gradient(to right, #eab308 0%, #eab308 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-slate-300 mt-1">
+              <div className="flex justify-between text-xs text-zinc-300 mt-1">
                 <span className="font-medium">{formatTime(currentTime)}</span>
                 <span className="font-medium">{formatTime(duration)}</span>
               </div>
@@ -178,7 +173,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                 {/* Skip Backward */}
                 <button
                   onClick={skipBackward}
-                  className="bg-slate-800/80 hover:bg-slate-700 p-2 rounded-full transition-all transform hover:scale-110 backdrop-blur-sm"
+                  className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full transition-all transform hover:scale-110 backdrop-blur-sm"
                   title="Skip 10s backward"
                 >
                   <SkipBack className="w-4 h-4 text-white" />
@@ -196,7 +191,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                 {/* Skip Forward */}
                 <button
                   onClick={skipForward}
-                  className="bg-slate-800/80 hover:bg-slate-700 p-2 rounded-full transition-all transform hover:scale-110 backdrop-blur-sm"
+                  className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full transition-all transform hover:scale-110 backdrop-blur-sm"
                   title="Skip 10s forward"
                 >
                   <SkipForward className="w-4 h-4 text-white" />
@@ -214,7 +209,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                     step="0.1"
                     value={volume}
                     onChange={handleVolumeChange}
-                    className="w-16 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                    className="w-16 h-1 bg-zinc-600 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
                 
@@ -222,7 +217,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                 <div className="relative">
                   <button
                     onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                    className="bg-slate-800/80 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg text-white text-xs font-medium transition-all backdrop-blur-sm flex items-center gap-1"
+                    className="bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1.5 rounded-lg text-white text-xs font-medium transition-all backdrop-blur-sm flex items-center gap-1"
                     title="Playback speed"
                   >
                     <Settings className="w-3.5 h-3.5" />
@@ -230,7 +225,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                   </button>
                   
                   {showSpeedMenu && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-slate-800 rounded-lg shadow-xl border border-slate-600 overflow-hidden">
+                    <div className="absolute bottom-full right-0 mb-2 bg-zinc-800 rounded-lg shadow-xl border border-zinc-600 overflow-hidden">
                       {playbackSpeeds.map(speed => (
                         <button
                           key={speed}
@@ -238,7 +233,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                           className={`block w-full px-3 py-1.5 text-left text-xs transition-colors ${
                             speed === playbackRate 
                               ? 'bg-yellow-500 text-black font-semibold' 
-                              : 'text-white hover:bg-slate-700'
+                              : 'text-white hover:bg-zinc-700'
                           }`}
                         >
                           {speed}x {speed === 1 ? '(Normal)' : speed < 1 ? '(Slow)' : '(Fast)'}
@@ -251,7 +246,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                 {/* Fullscreen */}
                 <button
                   onClick={toggleFullscreen}
-                  className="bg-slate-800/80 hover:bg-slate-700 p-1.5 rounded-lg transition-all backdrop-blur-sm"
+                  className="bg-zinc-800/80 hover:bg-zinc-700 p-1.5 rounded-lg transition-all backdrop-blur-sm"
                   title="Fullscreen"
                 >
                   <Maximize2 className="w-3.5 h-3.5 text-white" />

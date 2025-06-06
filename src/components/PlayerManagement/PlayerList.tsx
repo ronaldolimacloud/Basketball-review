@@ -25,7 +25,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       {/* On Court */}
       <div>
-        <h3 className="text-lg font-semibold mb-2 text-emerald-400 flex items-center gap-2">
+        <h3 className="text-lg font-semibold mb-2 text-emerald-100 flex items-center gap-2">
           <Users className="w-5 h-5" />
           On Court ({onCourtPlayers.length}/5)
         </h3>
@@ -41,7 +41,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
             />
           ))}
           {onCourtPlayers.length === 0 && (
-            <div className="text-slate-400 text-sm italic p-4 text-center">
+            <div className="text-zinc-400 text-sm italic p-4 text-center">
               No players on court
             </div>
           )}
@@ -50,7 +50,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
       
       {/* Bench */}
       <div>
-        <h3 className="text-lg font-semibold mb-2 text-slate-400 flex items-center gap-2">
+        <h3 className="text-lg font-semibold mb-2 text-zinc-400 flex items-center gap-2">
           <Users className="w-5 h-5" />
           Bench ({benchPlayers.length})
         </h3>
@@ -67,7 +67,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({
             />
           ))}
           {benchPlayers.length === 0 && (
-            <div className="text-slate-400 text-sm italic p-4 text-center">
+            <div className="text-zinc-400 text-sm italic p-4 text-center">
               No players on bench
             </div>
           )}

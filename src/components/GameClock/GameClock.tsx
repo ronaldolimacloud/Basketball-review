@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Timer } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface GameClockProps {
   gameClock: number;
@@ -39,7 +39,7 @@ export const GameClock: React.FC<GameClockProps> = ({
   };
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-600">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2 text-yellow-400">
           <Clock className="w-5 h-5" />
@@ -49,7 +49,7 @@ export const GameClock: React.FC<GameClockProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onPeriodChange(Math.max(1, currentPeriod - 1))}
-              className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm transition-colors"
+              className="bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded text-sm transition-colors"
               disabled={currentPeriod === 1}
             >
               -
@@ -57,7 +57,7 @@ export const GameClock: React.FC<GameClockProps> = ({
             <span className="text-lg font-semibold text-yellow-400">{getPeriodLabel()}</span>
             <button
               onClick={() => onPeriodChange(Math.min(getMaxPeriods(), currentPeriod + 1))}
-              className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-sm transition-colors"
+              className="bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded text-sm transition-colors"
               disabled={currentPeriod === getMaxPeriods()}
             >
               +

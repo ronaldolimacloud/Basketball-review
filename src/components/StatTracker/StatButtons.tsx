@@ -13,7 +13,7 @@ export const StatButtons: React.FC<StatButtonsProps> = ({
   const isDisabled = !selectedPlayerName;
 
   return (
-    <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-600">
       <h3 className="text-lg font-semibold mb-3 text-yellow-400">
         {selectedPlayerName ? `Recording for: ${selectedPlayerName}` : 'Select a player first'}
       </h3>
@@ -56,21 +56,21 @@ export const StatButtons: React.FC<StatButtonsProps> = ({
       <div className="grid grid-cols-3 gap-2 mb-4">
         <button
           onClick={() => onStatUpdate('fgMissed')}
-          className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
+          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
           disabled={isDisabled}
         >
           FG Miss
         </button>
         <button
           onClick={() => onStatUpdate('ftMissed')}
-          className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
+          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm transition-colors disabled:opacity-50"
           disabled={isDisabled}
         >
           FT Miss
         </button>
         <button
           onClick={() => onStatUpdate('turnovers')}
-          className="bg-red-600 hover:bg-red-700 p-2 rounded text-sm transition-colors disabled:opacity-50"
+          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
           disabled={isDisabled}
         >
           Turnover

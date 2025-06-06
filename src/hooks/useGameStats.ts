@@ -157,24 +157,30 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
   }, []);
 
   const substitutePlayer = useCallback((playerInId: string, playerOutId: string, currentTime: number) => {
-    setPlayers(prevPlayers => 
-      prevPlayers.map(player => {
+    // First, update all on-court players' time to ensure accurate tracking
+    updateTimeOnCourt(currentTime);
+    
+    setPlayers(prevPlayers => {
+      console.log('Before substitution:', {
+        onCourtCount: prevPlayers.filter(p => p.onCourt).length,
+        onCourtPlayers: prevPlayers.filter(p => p.onCourt).map(p => ({ id: p.id, name: p.name })),
+        playerInId,
+        playerOutId
+      });
+      
+      const updatedPlayers = prevPlayers.map(player => {
         if (player.id === playerOutId) {
-          // Update time on court for the player going out
-          const timeOnCourt = player.startTime !== null ? 
-            player.stats.timeOnCourt + (currentTime - player.startTime) : 
-            player.stats.timeOnCourt;
-          
+          console.log('Setting player OUT:', player.name, player.id);
+          // Player going out: set onCourt to false and startTime to null
+          // The time calculation was already done in updateTimeOnCourt above
           return {
             ...player,
             onCourt: false,
-            startTime: null,
-            stats: {
-              ...player.stats,
-              timeOnCourt
-            }
+            startTime: null
           };
         } else if (player.id === playerInId) {
+          console.log('Setting player IN:', player.name, player.id);
+          // Player coming in: set onCourt to true and startTime to current time
           return {
             ...player,
             onCourt: true,
@@ -182,9 +188,16 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
           };
         }
         return player;
-      })
-    );
-  }, []);
+      });
+      
+      console.log('After substitution:', {
+        onCourtCount: updatedPlayers.filter(p => p.onCourt).length,
+        onCourtPlayers: updatedPlayers.filter(p => p.onCourt).map(p => ({ id: p.id, name: p.name }))
+      });
+      
+      return updatedPlayers;
+    });
+  }, [updateTimeOnCourt]);
 
   return {
     players,

@@ -21,26 +21,25 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   opponentScore,
   teamFouls,
   teamTimeouts,
-  opponentTimeouts,
   onOpponentScore,
   onTeamTimeout,
   onOpponentTimeout,
 }) => {
   return (
-    <div className="bg-slate-800 rounded-lg p-4 mb-4 border border-slate-600">
+    <div className="bg-zinc-800 rounded-lg p-4 mb-4 border border-zinc-600">
       <div className="text-center text-3xl font-bold mb-2">
-        <span className="text-yellow-400">{teamName}: {teamScore}</span>
-        <span className="mx-3 text-slate-400">-</span>
-        <span className="text-orange-400">{opponentName}: {opponentScore}</span>
+        <span className="text-white">{teamName}: {teamScore}</span>
+        <span className="mx-3 text-zinc-400">-</span>
+        <span className="text-white">{opponentName}: {opponentScore}</span>
       </div>
       
       <div className="flex justify-center items-center gap-4 mb-2">
         <div className="text-sm">
-          <span className="text-slate-400">Team Fouls:</span>
+          <span className="text-zinc-400">Team Fouls:</span>
           <span className="ml-2 font-semibold text-amber-400">{teamFouls}</span>
         </div>
         <div className="text-sm">
-          <span className="text-slate-400">Timeouts:</span>
+          <span className="text-zinc-400">Timeouts:</span>
           <span className="ml-2 font-semibold text-yellow-400">{teamTimeouts}</span>
         </div>
       </div>
@@ -48,19 +47,19 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
       <div className="flex justify-center gap-2 mb-4">
         <button
           onClick={() => onOpponentScore(1)}
-          className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
+          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
         >
           {opponentName} +1
         </button>
         <button
           onClick={() => onOpponentScore(2)}
-          className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
+          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
         >
           {opponentName} +2
         </button>
         <button
           onClick={() => onOpponentScore(3)}
-          className="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition-colors"
+          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
         >
           {opponentName} +3
         </button>
@@ -70,14 +69,14 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={onTeamTimeout}
-          className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
+          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
         >
           <Timer className="w-4 h-4" />
           {teamName} Timeout
         </button>
         <button
           onClick={onOpponentTimeout}
-          className="bg-slate-700 hover:bg-slate-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
+          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
         >
           <Timer className="w-4 h-4" />
           {opponentName} Timeout
