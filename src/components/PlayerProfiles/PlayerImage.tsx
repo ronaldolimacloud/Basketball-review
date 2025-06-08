@@ -49,7 +49,7 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
 
   if (loading) {
     return (
-      <div className={`${className} flex items-center justify-center bg-slate-800`}>
+      <div className={`${className} flex items-center justify-center bg-zinc-800`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
       </div>
     );
@@ -57,8 +57,8 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
 
   if (error || !imageUrl) {
     return (
-      <div className={`${className} flex items-center justify-center bg-slate-800`}>
-        <User className="w-10 h-10 text-slate-500" />
+      <div className={`${className} flex items-center justify-center bg-zinc-800`}>
+        <User className="w-10 h-10 text-zinc-500" />
       </div>
     );
   }

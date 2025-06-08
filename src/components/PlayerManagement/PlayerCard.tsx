@@ -43,10 +43,10 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   return (
     <div
       onClick={isOnCourt ? onSelect : undefined}
-      className={`bg-slate-800 p-2 rounded transition-all ${
+      className={`bg-zinc-800 p-2 rounded transition-all ${
         isOnCourt
           ? `cursor-pointer ${
-              isSelected ? 'ring-2 ring-yellow-500 bg-slate-700' : 'hover:bg-slate-700'
+              isSelected ? 'ring-2 ring-yellow-500 bg-zinc-700' : 'hover:bg-zinc-700'
             }`
           : ''
       }`}
@@ -54,7 +54,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           {/* Profile Picture */}
-          <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-zinc-700 border border-zinc-600 flex items-center justify-center overflow-hidden flex-shrink-0">
             {player.profileImageUrl ? (
               <img 
                 src={player.profileImageUrl} 
@@ -76,7 +76,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                 }}
               />
             )}
-            <User className="w-4 h-4 text-slate-500 hidden" />
+            <User className="w-4 h-4 text-zinc-500 hidden" />
           </div>
           {isEditing ? (
             <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSave()}
-                className="bg-slate-600 px-2 py-1 rounded text-sm text-white border border-slate-500 focus:border-yellow-500 focus:outline-none"
+                className="bg-zinc-600 px-2 py-1 rounded text-sm text-white border border-zinc-500 focus:border-yellow-500 focus:outline-none"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
@@ -117,7 +117,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
                   setEditName(player.name);
                   setIsEditing(true);
                 }}
-                className="text-slate-400 hover:text-white"
+                className="text-zinc-400 hover:text-white"
               >
                 <Edit2 className="w-3 h-3" />
               </button>
@@ -127,7 +127,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
         
         <div className="flex items-center gap-2">
           {isOnCourt ? (
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-zinc-400">
               {formatTime(player.stats.timeOnCourt)} | +/- 
               <span className={player.stats.plusMinus >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                 {player.stats.plusMinus > 0 ? '+' : ''}{player.stats.plusMinus}

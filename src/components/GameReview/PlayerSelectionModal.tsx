@@ -19,7 +19,7 @@ export const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-lg p-6 max-w-md w-full mx-4 border border-slate-700">
+      <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full mx-4 border border-zinc-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
             <Users className="w-5 h-5" />
@@ -27,7 +27,7 @@ export const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-zinc-400 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -41,10 +41,10 @@ export const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
                 onSelectPlayer(player.id);
                 onClose();
               }}
-              className="w-full text-left p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-3"
+              className="w-full text-left p-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex items-center gap-3"
             >
               {/* Player Image */}
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600 flex-shrink-0">
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
                 <PlayerImage 
                   profileImageUrl={player.profileImageUrl}
                   className="w-full h-full object-cover"
@@ -55,7 +55,7 @@ export const PlayerSelectionModal: React.FC<PlayerSelectionModalProps> = ({
               <div>
                 <div className="font-medium text-white">{player.name}</div>
                 {player.position && (
-                  <div className="text-sm text-slate-400">{player.position}</div>
+                  <div className="text-sm text-zinc-400">{player.position}</div>
                 )}
               </div>
             </button>

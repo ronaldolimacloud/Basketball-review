@@ -37,6 +37,7 @@ interface UseGameStatsResult {
   substitutePlayer: (playerInId: string, playerOutId: string, currentTime: number) => void;
   setPlayers: React.Dispatch<React.SetStateAction<GamePlayer[]>>;
   updateTimeOnCourt: (currentGameTime: number) => void;
+  correctPlayerStats: (playerId: string, newStats: GamePlayer['stats'], onTeamScoreChange?: (pointsDifference: number) => void) => void;
 }
 
 export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult => {
@@ -199,6 +200,41 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     });
   }, [updateTimeOnCourt]);
 
+  const correctPlayerStats = useCallback((playerId: string, newStats: GamePlayer['stats'], onTeamScoreChange?: (pointsDifference: number) => void) => {
+    setPlayers(prevPlayers => {
+      const targetPlayer = prevPlayers.find(p => p.id === playerId);
+      if (!targetPlayer) return prevPlayers;
+
+      const oldStats = targetPlayer.stats;
+      const pointsDifference = newStats.points - oldStats.points;
+      
+      // If points changed, notify parent component to update team score
+      if (pointsDifference !== 0 && onTeamScoreChange) {
+        onTeamScoreChange(pointsDifference);
+      }
+
+      console.log('Stat correction:', {
+        playerId,
+        playerName: targetPlayer.name,
+        oldPoints: oldStats.points,
+        newPoints: newStats.points,
+        pointsDifference,
+        oldStats: oldStats,
+        newStats: newStats
+      });
+
+      return prevPlayers.map(player => {
+        if (player.id === playerId) {
+          return {
+            ...player,
+            stats: { ...newStats }
+          };
+        }
+        return player;
+      });
+    });
+  }, []);
+
   return {
     players,
     selectedPlayerId,
@@ -210,5 +246,6 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     substitutePlayer,
     setPlayers,
     updateTimeOnCourt,
+    correctPlayerStats,
   };
 }; 

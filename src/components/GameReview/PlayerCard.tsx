@@ -19,11 +19,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isSelected, onSe
       className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${
         isSelected
           ? 'border-yellow-500 bg-yellow-500/10'
-          : 'border-slate-600 bg-slate-800 hover:border-slate-500'
+          : 'border-zinc-600 bg-zinc-800 hover:border-zinc-500'
       }`}
     >
       {/* Player Image */}
-      <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-600 flex-shrink-0">
+      <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
         <PlayerImage 
           profileImageUrl={player.profileImageUrl}
           className="w-full h-full object-cover"
@@ -35,7 +35,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, isSelected, onSe
       <div>
         <h3 className="font-medium text-white">{player.name}</h3>
         {player.position && (
-          <div className="text-xs text-slate-400 mt-0.5">
+          <div className="text-xs text-zinc-400 mt-0.5">
             {player.position}
           </div>
         )}

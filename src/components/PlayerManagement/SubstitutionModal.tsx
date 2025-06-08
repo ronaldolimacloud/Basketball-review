@@ -22,24 +22,24 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-lg p-6 max-w-md w-full mx-4 border border-slate-700">
+      <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full mx-4 border border-zinc-700">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-semibold text-yellow-400">
             Substitution
           </h3>
           <button
             onClick={onCancel}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-zinc-400 hover:text-white transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
         
         <div className="mb-4">
-          <p className="text-slate-300 mb-2">
+          <p className="text-zinc-300 mb-2">
             <span className="text-emerald-400 font-semibold">{playerComingIn.name}</span> is coming in.
           </p>
-          <p className="text-slate-400 text-sm">
+          <p className="text-zinc-400 text-sm">
             Who should they replace?
           </p>
         </div>
@@ -49,16 +49,16 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
             <button
               key={player.id}
               onClick={() => onSubstitute(player.id)}
-              className="w-full bg-slate-800 hover:bg-slate-700 p-3 rounded-lg text-left flex justify-between items-center transition-colors group"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 p-3 rounded-lg text-left flex justify-between items-center transition-colors group"
             >
               <div>
                 <span className="text-white font-medium">{player.name}</span>
-                <div className="text-sm text-slate-400">
+                <div className="text-sm text-zinc-400">
                   {player.stats.points} pts, {player.stats.fouls} fouls
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-slate-400">
+                <div className="text-sm text-zinc-400">
                   {formatTime(player.stats.timeOnCourt)}
                 </div>
                 <div className={`text-sm ${player.stats.plusMinus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -71,7 +71,7 @@ export const SubstitutionModal: React.FC<SubstitutionModalProps> = ({
         
         <button
           onClick={onCancel}
-          className="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-lg transition-colors text-slate-300"
+          className="w-full bg-zinc-700 hover:bg-zinc-600 py-2 rounded-lg transition-colors text-zinc-300"
         >
           Cancel Substitution
         </button>

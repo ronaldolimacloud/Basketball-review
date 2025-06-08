@@ -57,7 +57,7 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ client }) => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-slate-400">Loading game history...</p>
+          <p className="text-zinc-400">Loading game history...</p>
         </div>
       </div>
     );
@@ -71,22 +71,22 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ client }) => {
           <Trophy className="w-6 h-6" />
           Game History
         </h2>
-        <p className="text-slate-400 mt-1">Review past games and statistics</p>
+        <p className="text-zinc-400 mt-1">Review past games and statistics</p>
       </div>
 
       {/* Games List */}
       {games.length === 0 ? (
         <div className="text-center py-12">
-          <Trophy className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-slate-400 mb-2">No games found</h3>
-          <p className="text-slate-500 mb-4">Start by creating your first game review</p>
+          <Trophy className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-zinc-400 mb-2">No games found</h3>
+          <p className="text-zinc-500 mb-4">Start by creating your first game review</p>
         </div>
       ) : (
         <div className="space-y-4">
           {games.map((game) => (
             <div
               key={game.id}
-              className="bg-slate-900 rounded-lg p-6 border border-slate-700 hover:border-slate-600 transition-colors"
+              className="bg-zinc-900 rounded-lg p-6 border border-zinc-700 hover:border-zinc-600 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -105,7 +105,7 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ client }) => {
                   </div>
 
                   {/* Game Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-slate-400">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-zinc-400">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>{formatDate(game.gameDate || game.createdAt)}</span>
@@ -126,22 +126,22 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ client }) => {
 
                   {/* Score */}
                   {game.isCompleted && (
-                    <div className="mt-4 p-4 bg-slate-800 rounded-lg">
+                    <div className="mt-4 p-4 bg-zinc-800 rounded-lg">
                       <div className="text-center">
                         <div className="text-2xl font-bold">
                           <span className="text-yellow-400">{game.homeTeamScore}</span>
-                          <span className="text-slate-500 mx-3">-</span>
+                          <span className="text-zinc-500 mx-3">-</span>
                           <span className="text-orange-400">{game.awayTeamScore}</span>
                         </div>
-                        <div className="text-sm text-slate-400 mt-1">Final Score</div>
+                        <div className="text-sm text-zinc-400 mt-1">Final Score</div>
                       </div>
                     </div>
                   )}
 
                   {/* Game Notes */}
                   {game.notes && (
-                    <div className="mt-4 p-3 bg-slate-800 rounded border-l-4 border-yellow-400">
-                      <p className="text-sm text-slate-300">{game.notes}</p>
+                    <div className="mt-4 p-3 bg-zinc-800 rounded border-l-4 border-yellow-400">
+                      <p className="text-sm text-zinc-300">{game.notes}</p>
                     </div>
                   )}
                 </div>
@@ -149,7 +149,7 @@ export const GameHistory: React.FC<GameHistoryProps> = ({ client }) => {
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2 ml-4">
                   <button
-                    className="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded text-sm transition-colors"
+                    className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-sm transition-colors"
                     onClick={() => {
                       // TODO: Implement view game details
                       console.log('View game details:', game.id);
