@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
-import { uploadData } from 'aws-amplify/storage';
 import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { PlayerImage } from './PlayerImage';
 
@@ -21,7 +20,8 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     height: '',
     weight: '',
     jerseyNumber: '',
-    profileImage: null as File | null
+    profileImage: null as File | null,
+    profileImageUrl: '' as string
   });
   const [editForm, setEditForm] = useState({
     name: '',
@@ -60,43 +60,64 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     }
   };
 
-  const uploadProfileImage = async (file: File, playerId: string): Promise<string | null> => {
-    try {
-      setUploading(true);
-      console.log('Starting upload for player:', playerId, 'file:', file.name);
-      
-      // Clean the filename and create a proper path with public access
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `public/player-images/${playerId}-${Date.now()}-${cleanFileName}`;
-      
-      console.log('Upload path:', fileName);
-      
-      const result = await uploadData({
-        path: fileName,
-        data: file,
-        options: {
-          contentType: file.type || 'image/jpeg'
-        }
-      }).result;
-
-      console.log('Upload successful:', result);
-      return fileName;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return null;
-    } finally {
-      setUploading(false);
+  // Handle file upload success from FileUploader
+  const handleFileUploadSuccess = (event: any) => {
+    console.log('🎉 Files uploaded successfully:', event);
+    console.log('🗝️ Event structure:', JSON.stringify(event, null, 2));
+    console.log('🔍 Event type:', typeof event);
+    console.log('🔍 Event keys:', Object.keys(event || {}));
+    
+    // Try different possible key formats
+    const fileName = event?.key || event?.path || event;
+    
+    if (fileName && typeof fileName === 'string') {
+      console.log('✅ Setting profile image path:', fileName);
+      console.log('📂 Full file path for StorageImage:', fileName);
+      setFormData(prev => ({ ...prev, profileImage: null, profileImageUrl: fileName }));
+    } else {
+      console.error('❌ No valid key found in upload success event');
+      console.error('❌ Received:', fileName);
     }
+    setUploading(false);
+  };
+
+  const handleFileUploadStart = (event: { key?: string }) => {
+    console.log('File upload started:', event);
+    setUploading(true);
+  };
+
+  const handleFileUploadError = (error: any, event: { key?: string }) => {
+    console.error('File upload error:', error, event);
+    alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    setUploading(false);
   };
 
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const { data } = await client.models.Player.list();
-      setPlayers(data || []);
+      console.log('🔍 Fetching players...');
+      const result = await client.models.Player.list();
+      console.log('📦 Raw result from API:', result);
+      console.log('👥 Players data:', result.data);
+      console.log('📊 Number of players:', result.data?.length || 0);
+      
+      // Log any GraphQL errors
+      if (result.errors && result.errors.length > 0) {
+        console.error('🚨 GraphQL Errors when fetching players:', result.errors);
+        console.error('🚨 Errors as JSON:', JSON.stringify(result.errors, null, 2));
+      }
+      
+      setPlayers(result.data || []);
+      
+      // Debug player image URLs
+      if (result.data && result.data.length > 0) {
+        console.log('🖼️ Player profile image URLs:');
+        result.data.forEach(player => {
+          console.log(`  ${player.name}: ${player.profileImageUrl || 'NO IMAGE'}`);
+        });
+      }
     } catch (error) {
-      console.error('Error fetching players:', error);
+      console.error('❌ Error fetching players:', error);
     } finally {
       setLoading(false);
     }
@@ -106,13 +127,16 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     if (!formData.name.trim()) return;
 
     try {
+      console.log('🚀 Starting player creation with data:', formData);
+      
       // First create the player
-      const newPlayer = await client.models.Player.create({
+      const playerData = {
         name: formData.name,
         position: formData.position || undefined,
         height: formData.height || undefined,
         weight: formData.weight || undefined,
         jerseyNumber: formData.jerseyNumber ? parseInt(formData.jerseyNumber) : undefined,
+        profileImageUrl: formData.profileImageUrl || undefined,
         isActive: true,
         totalGamesPlayed: 0,
         careerPoints: 0,
@@ -127,25 +151,32 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
         careerFtMade: 0,
         careerFtAttempts: 0,
         careerMinutesPlayed: 0
-      });
+      };
+      
+      console.log('🚀 Creating player with data:', playerData);
+      console.log('🖼️ Profile image URL being saved:', formData.profileImageUrl);
+      
+      const newPlayer = await client.models.Player.create(playerData);
 
-      // Upload profile image if provided
-      if (formData.profileImage && newPlayer.data) {
-        const imageUrl = await uploadProfileImage(formData.profileImage, newPlayer.data.id);
-        if (imageUrl) {
-          await client.models.Player.update({
-            id: newPlayer.data.id,
-            profileImageUrl: imageUrl
-          });
-        }
+      console.log('✅ Player created successfully:', newPlayer);
+      
+      // Log any GraphQL errors
+      if (newPlayer.errors && newPlayer.errors.length > 0) {
+        console.error('🚨 GraphQL Errors when creating player:', newPlayer.errors);
+        console.error('🚨 Create Errors as JSON:', JSON.stringify(newPlayer.errors, null, 2));
+        alert('Failed to create player. Check console for details.');
+        return;
       }
 
-      setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+      // Profile image will be handled by FileUploader component after player creation
+
+      console.log('🧹 Resetting form and fetching players...');
+      setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
       setPreviewUrl(null);
       setShowAddForm(false);
       fetchPlayers();
     } catch (error) {
-      console.error('Error creating player:', error);
+      console.error('❌ Error creating player:', error);
     }
   };
 
@@ -153,18 +184,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     try {
       console.log('Updating player:', playerId, 'with data:', updatedData);
       
-      // If there's a new profile image, upload it first
-      if (profileImage) {
-        console.log('Uploading new profile image...');
-        const imageUrl = await uploadProfileImage(profileImage, playerId);
-        if (imageUrl) {
-          updatedData.profileImageUrl = imageUrl;
-          console.log('Image uploaded successfully, URL:', imageUrl);
-        } else {
-          console.error('Failed to upload image');
-          return;
-        }
-      }
+      // Profile image updates will be handled by FileUploader component separately
       
       console.log('Updating player in database with:', updatedData);
       await client.models.Player.update({
@@ -204,7 +224,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+    setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
     setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
     setPreviewUrl(null);
     setShowAddForm(false);
@@ -277,34 +297,20 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
           {/* Profile Image Upload */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-zinc-300 mb-3">Profile Picture</label>
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden group-hover:border-yellow-500 transition-colors">
-                  {previewUrl ? (
-                    <img 
-                      src={previewUrl} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-10 h-10 text-zinc-500" />
-                  )}
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="absolute -bottom-1 -right-1 bg-yellow-500 rounded-full p-2 shadow-lg">
-                  <Camera className="w-4 h-4 text-black" />
-                </div>
-              </div>
-              <div className="text-sm text-zinc-400">
-                <p className="font-medium">Click to upload a profile picture</p>
-                <p className="text-xs mt-1">JPG, PNG up to 10MB</p>
-                <p className="text-xs text-yellow-400 mt-1">Optional but recommended</p>
-              </div>
+            <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4">
+              <FileUploader
+                acceptedFileTypes={['image/*']}
+                path="public/player-images/"
+                maxFileCount={1}
+                onUploadSuccess={handleFileUploadSuccess}
+                onUploadStart={handleFileUploadStart}
+                onUploadError={handleFileUploadError}
+                displayText={{
+                  dropFilesText: "Drop profile image here or",
+                  browseFilesText: "browse files",
+                  getUploadingText: () => "Uploading image..."
+                }}
+              />
             </div>
           </div>
 

@@ -23,9 +23,11 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
       path={profileImageUrl}
       alt={alt}
       className={className}
+      bucket="basketballPlayerImages"
       fallbackSrc="/default-player.png"
       onGetUrlError={(error) => {
-        console.log('Error loading image from storage:', error);
+        console.error('Error loading image from storage:', error);
+        console.error('Failed path:', profileImageUrl);
       }}
     />
   );

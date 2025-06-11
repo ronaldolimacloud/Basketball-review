@@ -34,7 +34,7 @@ const schema = a.schema({
       gameStats: a.hasMany('GameStat', 'playerId'),
       teamPlayers: a.hasMany('TeamPlayer', 'playerId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // Team Management
   Team: a
@@ -48,7 +48,7 @@ const schema = a.schema({
       homeGames: a.hasMany('Game', 'homeTeamId'),
       awayGames: a.hasMany('Game', 'awayTeamId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // Team-Player Association (many-to-many)
   TeamPlayer: a
@@ -62,7 +62,7 @@ const schema = a.schema({
       team: a.belongsTo('Team', 'teamId'),
       player: a.belongsTo('Player', 'playerId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // Game Session
   Game: a
@@ -95,7 +95,7 @@ const schema = a.schema({
       awayTeam: a.belongsTo('Team', 'awayTeamId'),
       gameStats: a.hasMany('GameStat', 'gameId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 
   // Individual player stats for a specific game
   GameStat: a
@@ -126,7 +126,7 @@ const schema = a.schema({
       game: a.belongsTo('Game', 'gameId'),
       player: a.belongsTo('Player', 'playerId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [allow.publicApiKey()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -134,7 +134,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
+    defaultAuthorizationMode: 'apiKey',
   },
 });
 
