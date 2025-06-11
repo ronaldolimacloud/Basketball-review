@@ -21,7 +21,7 @@ import { calculateTeamFouls } from '../../utils/statCalculations';
 import { createPeriodScore, getMaxPeriods } from '../../utils/gameHelpers';
 
 // Icons
-import { Play, Users, History, BarChart3, Edit3 } from 'lucide-react';
+import { Play, Users, BarChart3, Edit3 } from 'lucide-react';
 
 interface GameReviewProps {
   client: ReturnType<typeof generateClient<Schema>>;

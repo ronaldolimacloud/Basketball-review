@@ -180,7 +180,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     }
   };
 
-  const handleUpdatePlayer = async (playerId: string, updatedData: any, profileImage?: File | null) => {
+  const handleUpdatePlayer = async (playerId: string, updatedData: any) => {
     try {
       console.log('Updating player:', playerId, 'with data:', updatedData);
       
@@ -663,7 +663,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                           jerseyNumber: editForm.jerseyNumber ? parseInt(editForm.jerseyNumber) : undefined,
                         };
                         
-                        handleUpdatePlayer(player.id, updatedData, editForm.profileImage);
+                        handleUpdatePlayer(player.id, updatedData);
                       }}
                       disabled={!editForm.name.trim() || uploading}
                       className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-600 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"

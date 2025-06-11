@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
