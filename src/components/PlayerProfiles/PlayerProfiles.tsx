@@ -29,7 +29,8 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     height: '',
     weight: '',
     jerseyNumber: '',
-    profileImage: null as File | null
+    profileImage: null as File | null,
+    profileImageUrl: '' as string
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -40,25 +41,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     fetchPlayers();
   }, []);
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (editingPlayer) {
-        // For edit mode
-        setEditForm({ ...editForm, profileImage: file });
-      } else {
-        // For add mode
-        setFormData({ ...formData, profileImage: file });
-      }
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+
 
   // Handle file upload success from FileUploader
   const handleFileUploadSuccess = (event: any) => {
@@ -89,6 +72,23 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   const handleFileUploadError = (error: any, event: { key?: string }) => {
     console.error('File upload error:', error, event);
     alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
+    setUploading(false);
+  };
+
+  // Handle file upload success for edit mode
+  const handleEditFileUploadSuccess = (event: any) => {
+    console.log('🎉 Edit mode - Files uploaded successfully:', event);
+    console.log('🗝️ Edit Event structure:', JSON.stringify(event, null, 2));
+    
+    const fileName = event?.key || event?.path || event;
+    
+    if (fileName && typeof fileName === 'string') {
+      console.log('✅ Edit mode - Setting profile image path:', fileName);
+      setEditForm(prev => ({ ...prev, profileImage: null, profileImageUrl: fileName }));
+      setPreviewUrl(null); // Clear preview since we have uploaded image
+    } else {
+      console.error('❌ Edit mode - No valid key found in upload success event');
+    }
     setUploading(false);
   };
 
@@ -225,7 +225,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
   const resetForm = () => {
     setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
-    setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+    setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
     setPreviewUrl(null);
     setShowAddForm(false);
     setEditingPlayer(null);
@@ -440,7 +440,8 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                           height: player.height || '',
                           weight: player.weight || '',
                           jerseyNumber: player.jerseyNumber?.toString() || '',
-                          profileImage: null
+                          profileImage: null,
+                          profileImageUrl: player.profileImageUrl || ''
                         });
                       }}
                       className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
@@ -551,37 +552,37 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                   {/* Profile Image Upload */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-zinc-300 mb-2">Profile Picture</label>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="w-28 h-28 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
-                          {previewUrl ? (
-                            <img 
-                              src={previewUrl} 
-                              alt="Preview" 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <PlayerImage 
-                              profileImageUrl={player.profileImageUrl}
-                              className="w-full h-full object-cover"
-                              alt={player.name}
-                            />
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    
+                    {/* Current Image Display */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-28 h-28 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
+                        <PlayerImage 
+                          profileImageUrl={editForm.profileImageUrl || player.profileImageUrl}
+                          className="w-full h-full object-cover"
+                          alt={player.name}
                         />
-                        <div className="absolute -bottom-1 -right-1 bg-yellow-500 rounded-full p-1">
-                          <Camera className="w-3 h-3 text-black" />
-                        </div>
                       </div>
                       <div className="text-sm text-zinc-400">
-                        <p>Click to change profile picture</p>
-                        <p className="text-xs">JPG, PNG up to 10MB</p>
+                        <p>Current profile picture</p>
+                        <p className="text-xs">Upload a new image below to change it</p>
                       </div>
+                    </div>
+
+                    {/* File Uploader */}
+                    <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4">
+                      <FileUploader
+                        acceptedFileTypes={['image/*']}
+                        path="public/player-images/"
+                        maxFileCount={1}
+                        onUploadSuccess={handleEditFileUploadSuccess}
+                        onUploadStart={handleFileUploadStart}
+                        onUploadError={handleFileUploadError}
+                        displayText={{
+                          dropFilesText: "Drop new profile image here or",
+                          browseFilesText: "browse files",
+                          getUploadingText: () => "Uploading new image..."
+                        }}
+                      />
                     </div>
                   </div>
                   
@@ -644,7 +645,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                       onClick={() => {
                         setEditingPlayer(null);
                         setPreviewUrl(null);
-                        setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null });
+                        setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
                       }}
                       className="bg-zinc-600 hover:bg-zinc-700 px-4 py-2 rounded-lg font-medium text-white transition-colors flex items-center gap-2"
                     >
@@ -661,6 +662,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                           height: editForm.height || undefined,
                           weight: editForm.weight || undefined,
                           jerseyNumber: editForm.jerseyNumber ? parseInt(editForm.jerseyNumber) : undefined,
+                          profileImageUrl: editForm.profileImageUrl || undefined,
                         };
                         
                         handleUpdatePlayer(player.id, updatedData);
