@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, Settings } from 'lucide-react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, Settings, LogOut } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
@@ -14,6 +15,7 @@ const client = generateClient<Schema>();
 type TabType = 'game' | 'players' | 'history';
 
 const BasketballReviewApp = () => {
+  const { user, signOut } = useAuthenticator();
   const [activeTab, setActiveTab] = useState<TabType>('players');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -146,8 +148,15 @@ const BasketballReviewApp = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="p-2 hover:bg-zinc-700 rounded-lg transition-colors">
-                <Settings className="w-5 h-5 text-zinc-400" />
+              <div className="text-sm text-zinc-400">
+                Welcome, {user?.signInDetails?.loginId}
+              </div>
+              <button 
+                onClick={signOut}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-white"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="text-sm">Sign Out</span>
               </button>
             </div>
           </div>
