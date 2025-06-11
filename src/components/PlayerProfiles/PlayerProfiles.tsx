@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera } from '
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
+import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { PlayerImage } from './PlayerImage';
 
 interface PlayerProfilesProps {
@@ -64,9 +65,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       setUploading(true);
       console.log('Starting upload for player:', playerId, 'file:', file.name);
       
-      // Clean the filename and create a proper path
+      // Clean the filename and create a proper path with public access
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `player-images/${playerId}-${Date.now()}-${cleanFileName}`;
+      const fileName = `public/player-images/${playerId}-${Date.now()}-${cleanFileName}`;
       
       console.log('Upload path:', fileName);
       
