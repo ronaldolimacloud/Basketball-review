@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera, Eye } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { PlayerImage } from './PlayerImage';
+import { PlayerDetail } from './PlayerDetail';
 
 interface PlayerProfilesProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -14,6 +15,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     position: '',
@@ -242,6 +244,17 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     );
   }
 
+  // If a player is selected, show the player detail view
+  if (selectedPlayerId) {
+    return (
+      <PlayerDetail 
+        playerId={selectedPlayerId} 
+        onBack={() => setSelectedPlayerId(null)}
+        client={client}
+      />
+    );
+  }
+
   return (
     <div className="h-full flex flex-col space-y-6">
       {/* Dashboard Header */}
@@ -411,12 +424,13 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
           {players.map((player) => {
             const averages = calculatePlayerAverages(player);
             return (
-              <div key={player.id} className="bg-gradient-to-b from-zinc-900 to-zinc-800 rounded-xl p-6 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 transform hover:scale-[1.02] shadow-lg">
+              <div key={player.id} className="bg-gradient-to-b from-zinc-900 to-zinc-800 rounded-xl p-6 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 transform hover:scale-[1.02] shadow-lg cursor-pointer group"
+                   onClick={() => setSelectedPlayerId(player.id)}>
                 
                 {/* Player Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white truncate">{player.name}</h3>
+                    <h3 className="text-lg font-bold text-white truncate group-hover:text-yellow-400 transition-colors">{player.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       {player.position && (
                         <span className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 px-2 py-1 rounded-lg text-xs font-medium">
@@ -432,7 +446,18 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                   </div>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPlayerId(player.id);
+                      }}
+                      className="p-2 rounded-lg text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700 transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingPlayer(player.id);
                         setEditForm({
                           name: player.name,
@@ -445,12 +470,17 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                         });
                       }}
                       className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                      title="Edit Player"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeletePlayer(player.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePlayer(player.id);
+                      }}
                       className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
+                      title="Delete Player"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -459,9 +489,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
                 {/* Player Avatar */}
                 <div className="mb-4">
-                  <div className="w-28 h-28 mx-auto rounded-full overflow-hidden border-3 border-zinc-600 shadow-lg">
-                    <PlayerImage 
-                      profileImageUrl={player.profileImageUrl}
+                              <div className="w-40 h-40 mx-auto rounded-full overflow-hidden border-3 border-zinc-600 shadow-lg">
+              <PlayerImage
+                profileImageUrl={player.profileImageUrl}
                       className="w-full h-full object-cover"
                       alt={player.name}
                     />
@@ -523,6 +553,14 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                     </div>
                   )}
                 </div>
+                
+                {/* Click indicator */}
+                <div className="mt-4 pt-3 border-t border-zinc-700/50 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-xs text-zinc-400 flex items-center justify-center gap-1">
+                    <Eye className="w-3 h-3" />
+                    Click to view detailed stats
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -555,9 +593,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                     
                     {/* Current Image Display */}
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-28 h-28 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
-                        <PlayerImage 
-                          profileImageUrl={editForm.profileImageUrl || player.profileImageUrl}
+                                    <div className="w-40 h-40 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
+                <PlayerImage
+                  profileImageUrl={editForm.profileImageUrl || player.profileImageUrl}
                           className="w-full h-full object-cover"
                           alt={player.name}
                         />
