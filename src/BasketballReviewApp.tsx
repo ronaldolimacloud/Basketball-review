@@ -7,13 +7,15 @@ import type { Schema } from '../amplify/data/resource';
 // Components
 import { GameReview } from './components/GameReview/GameReview';
 import { PlayerProfiles } from './components/PlayerProfiles/PlayerProfiles';
+import { PlayersWithTeamAssignment } from './components/PlayerProfiles/PlayersWithTeamAssignment';
+import { MyTeams } from './components/MyTeams/MyTeams';
 import { GameHistory } from './components/GameHistory/GameHistory';
 import { LiveGames } from './components/LiveGames/LiveGames';
 
 // Generate the Amplify Data client
 const client = generateClient<Schema>();
 
-type TabType = 'game' | 'players' | 'history' | 'live';
+type TabType = 'game' | 'players' | 'teams' | 'history' | 'live';
 
 const BasketballReviewApp = () => {
   const { user, signOut } = useAuthenticator();
@@ -23,10 +25,17 @@ const BasketballReviewApp = () => {
   const tabs = [
     {
       id: 'players' as TabType,
-      label: 'Player Profiles',
+      label: 'Players',
       icon: Users,
-      component: PlayerProfiles,
-      description: 'Manage team roster and player stats'
+      component: PlayersWithTeamAssignment,
+      description: 'Manage player profiles, photos, and team assignments'
+    },
+    {
+      id: 'teams' as TabType,
+      label: 'My Teams',
+      icon: Trophy,
+      component: MyTeams,
+      description: 'Create and manage your basketball teams'
     },
     {
       id: 'game' as TabType,
@@ -51,7 +60,7 @@ const BasketballReviewApp = () => {
     }
   ];
 
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PlayerProfiles;
+  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PlayersWithTeamAssignment;
   const activeTabInfo = tabs.find(tab => tab.id === activeTab);
 
   return (

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { Play, Users, Settings } from 'lucide-react';
+import { Play, Users, Settings, Trophy } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat } from '../../types/game.types';
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
+import { useTeamManagement } from '../../hooks/useTeamManagement';
 
 interface GameSetupFormProps {
-  onSetupComplete: (team: string, opponent: string, format: GameFormat, players: any[]) => void;
+  onSetupComplete: (teamId: string, teamName: string, opponent: string, format: GameFormat, players: any[]) => void;
   client: ReturnType<typeof generateClient<Schema>>;
 }
 
@@ -36,29 +37,27 @@ interface GamePlayer {
 }
 
 export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, client }) => {
-  const [teamName, setTeamName] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [opponentName, setOpponentName] = useState('');
   const [gameFormat, setGameFormat] = useState<GameFormat>('quarters');
-  const [availablePlayers, setAvailablePlayers] = useState<any[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Use team management hook
+  const teamManagement = useTeamManagement(client);
 
+  // Get available players based on selected team
+  const availablePlayers = selectedTeamId 
+    ? teamManagement.getTeamPlayers(selectedTeamId)
+    : [];
+
+  // Get selected team name
+  const selectedTeam = teamManagement.teams.find(team => team.id === selectedTeamId);
+  const teamName = selectedTeam?.name || '';
+
+  // Clear selected players when team changes
   useEffect(() => {
-    fetchPlayers();
-  }, []);
-
-  const fetchPlayers = async () => {
-    try {
-      setLoading(true);
-      const { data } = await client.models.Player.list();
-      const activePlayers = (data || []).filter(player => player.isActive);
-      setAvailablePlayers(activePlayers);
-    } catch (error) {
-      console.error('Error fetching players:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setSelectedPlayerIds([]);
+  }, [selectedTeamId]);
 
   const handlePlayerToggle = (playerId: string) => {
     setSelectedPlayerIds(prev => 
@@ -82,6 +81,9 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
     // Convert selected players to game format
     const gamePlayers: GamePlayer[] = selectedPlayerIds.map((playerId, index) => {
       const player = availablePlayers.find(p => p.id === playerId);
+      if (!player) {
+        throw new Error(`Player with ID ${playerId} not found`);
+      }
       return {
         id: player.id,
         name: player.name,
@@ -108,17 +110,17 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
       };
     });
 
-    onSetupComplete(teamName.trim(), opponentName.trim(), gameFormat, gamePlayers);
+    onSetupComplete(selectedTeamId, teamName.trim(), opponentName.trim(), gameFormat, gamePlayers);
   };
 
-  const isValid = teamName.trim() && opponentName.trim() && selectedPlayerIds.length > 0;
+  const isValid = selectedTeamId && opponentName.trim() && selectedPlayerIds.length > 0;
 
-  if (loading) {
+  if (teamManagement.loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-zinc-400">Loading players...</p>
+          <p className="text-zinc-400">Loading teams and players...</p>
         </div>
       </div>
     );
@@ -137,15 +139,25 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Your Team Name
+                Select Your Team
               </label>
-              <input
-                type="text"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="Enter team name"
-                className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:border-yellow-500 focus:outline-none"
-              />
+              <select
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+              >
+                <option value="">Choose a team...</option>
+                {teamManagement.teams.map(team => (
+                  <option key={team.id} value={team.id}>
+                    {team.name} ({teamManagement.getTeamPlayers(team.id).length} players)
+                  </option>
+                ))}
+              </select>
+              {teamManagement.teams.length === 0 && (
+                <p className="text-xs text-zinc-400 mt-1">
+                  No teams found. Create teams in the "My Teams" tab first.
+                </p>
+              )}
             </div>
 
             <div>
@@ -183,14 +195,19 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
                 <Users className="w-5 h-5" />
                 Select Players ({selectedPlayerIds.length} selected)
               </h2>
-              {availablePlayers.length === 0 && (
+              {!selectedTeamId && (
                 <p className="text-sm text-zinc-400">
-                  No players found. Please add players in the Player Profiles tab first.
+                  Please select a team first to see available players.
+                </p>
+              )}
+              {selectedTeamId && availablePlayers.length === 0 && (
+                <p className="text-sm text-zinc-400">
+                  No players assigned to this team. Assign players in the "Players" tab.
                 </p>
               )}
             </div>
 
-            {availablePlayers.length > 0 ? (
+            {selectedTeamId && availablePlayers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                 {availablePlayers.map((player) => (
                   <div
@@ -219,10 +236,9 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
                             {player.position && (
                               <span className="bg-zinc-700 px-2 py-0.5 rounded">{player.position}</span>
                             )}
-                            {player.jerseyNumber && <span>#{player.jerseyNumber}</span>}
                           </div>
                           <div className="text-xs text-zinc-500 mt-1">
-                            {player.totalGamesPlayed || 0} games played
+                            {player.teams.length > 0 ? `Member of ${player.teams.length} team(s)` : 'No team assignments'}
                           </div>
                         </div>
                       </div>
@@ -241,9 +257,19 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
               </div>
             ) : (
               <div className="text-center py-8 text-zinc-400">
-                <Users className="w-16 h-16 mx-auto mb-4 text-zinc-600" />
-                <p>No active players available</p>
-                <p className="text-sm mt-2">Add players in the Player Profiles tab to get started</p>
+                {!selectedTeamId ? (
+                  <>
+                    <Trophy className="w-16 h-16 mx-auto mb-4 text-zinc-600" />
+                    <p>Select a team to see available players</p>
+                    <p className="text-sm mt-2">Choose your team from the dropdown above</p>
+                  </>
+                ) : (
+                  <>
+                    <Users className="w-16 h-16 mx-auto mb-4 text-zinc-600" />
+                    <p>No players assigned to this team</p>
+                    <p className="text-sm mt-2">Assign players to this team in the "Players" tab</p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -293,7 +319,7 @@ export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, c
             </button>
             {!isValid && (
               <p className="text-sm text-zinc-400 mt-2">
-                Please complete all fields and select at least one player
+                Please select a team, enter opponent name, and choose at least one player
               </p>
             )}
           </div>

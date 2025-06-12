@@ -57,7 +57,10 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       const randomString = Math.random().toString(36).substring(2, 15);
       const extension = file.name.split('.').pop() || 'jpg';
       const filename = `player_${timestamp}_${randomString}.${extension}`;
-      const fullPath = `public/player-images/${filename}`;
+      
+      // For protected storage, upload to the player-images folder
+      // AWS will automatically add the user's identityId to the path
+      const fullPath = `protected/player-images/${filename}`;
       
       console.log('🚀 Uploading optimized image:', fullPath);
       
@@ -70,10 +73,15 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       }).result;
       
       console.log('✅ Upload successful:', result.path);
+      console.log('✅ Full result object:', result);
+      
+      // Store the FULL path returned by uploadData (includes identityId)
+      // This complete path should be used directly by StorageImage component
       setFormData(prev => ({ ...prev, profileImageUrl: result.path }));
       
     } catch (error) {
       console.error('❌ Upload failed:', error);
+      console.error('❌ Error details:', error);
       alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
@@ -270,7 +278,10 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       const randomString = Math.random().toString(36).substring(2, 15);
       const extension = file.name.split('.').pop() || 'jpg';
       const filename = `player_${timestamp}_${randomString}.${extension}`;
-      const fullPath = `public/player-images/${filename}`;
+      
+      // For protected storage, upload to the player-images folder
+      // AWS will automatically add the user's identityId to the path
+      const fullPath = `protected/player-images/${filename}`;
       
       console.log('🚀 Uploading optimized image (edit mode):', fullPath);
       
@@ -283,10 +294,15 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
       }).result;
       
       console.log('✅ Upload successful (edit mode):', result.path);
+      console.log('✅ Full result object (edit mode):', result);
+      
+      // Store the FULL path returned by uploadData (includes identityId)
+      // This complete path should be used directly by StorageImage component
       setEditForm(prev => ({ ...prev, profileImageUrl: result.path }));
       
     } catch (error) {
       console.error('❌ Upload failed (edit mode):', error);
+      console.error('❌ Error details (edit mode):', error);
       alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
@@ -589,13 +605,13 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPlayerId(player.id);
                       }}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700 transition-colors"
+                      className="p-2 rounded-lg text-zinc-400 hover:text-yellow-400 hover:bg-zinc-700 transition-colors bg-zinc-800/80 backdrop-blur-sm"
                       title="View Details"
                     >
                       <Eye className="w-4 h-4" />
@@ -614,7 +630,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                           profileImageUrl: player.profileImageUrl || ''
                         });
                       }}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                      className="p-2 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-zinc-700 transition-colors bg-zinc-800/80 backdrop-blur-sm"
                       title="Edit Player"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -624,7 +640,7 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                         e.stopPropagation();
                         handleDeletePlayer(player.id);
                       }}
-                      className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
+                      className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors bg-zinc-800/80 backdrop-blur-sm"
                       title="Delete Player"
                     >
                       <Trash2 className="w-4 h-4" />

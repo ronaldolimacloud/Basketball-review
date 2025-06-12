@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat, PeriodScore, StatType } from '../../types/game.types';
@@ -81,7 +81,9 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   
   // Initialize game stats hook - this manages the actual player state
   const gameStats = useGameStats(initialPlayers);
-  const gameClock = useGameClock((updater) => {
+  
+  // Stable callback for game clock to prevent interval recreation
+  const handlePlayersUpdate = useCallback((updater: (players: any[]) => any[]) => {
     gameStats.setPlayers((prevPlayers) => {
       // Convert GamePlayer[] to Player[] for the updater function
       const convertedPlayers = prevPlayers.map((player, index) => ({
@@ -98,40 +100,23 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         id: prevPlayers[index]?.id || player.id.toString(),
       }));
     });
-  });
+  }, [gameStats.setPlayers]);
+  
+  const gameClock = useGameClock(handlePlayersUpdate);
 
-  // Update time on court every second when clock is running
-  useEffect(() => {
-    let interval: number;
-    
-    if (!isSetup && gameClock.isClockRunning) {
-      interval = setInterval(() => {
-        gameStats.updateTimeOnCourt(gameClock.gameClock);
-      }, 1000);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isSetup, gameClock.isClockRunning, gameClock.gameClock, gameStats]);
+  // Note: Time tracking is handled by useGameClock hook, no need for duplicate interval here
 
-  const handleSetupComplete = async (team: string, opponent: string, format: GameFormat, players: GamePlayer[]) => {
-    setTeamName(team);
+  const handleSetupComplete = async (teamId: string, teamName: string, opponent: string, format: GameFormat, players: GamePlayer[]) => {
+    setTeamName(teamName);
     setOpponentName(opponent);
     setGameFormat(format);
     setInitialPlayers(players);
     
-    // Create game record in database
+    // Create game record in database using existing team
     try {
-      // Create a temporary team for this game
-      const tempTeam = await client.models.Team.create({
-        name: team,
-        isActive: true
-      });
-
       const newGame = await client.models.Game.create({
-        homeTeamId: tempTeam.data?.id || 'temp-id',
-        homeTeamName: team,
+        homeTeamId: teamId,
+        homeTeamName: teamName,
         awayTeamName: opponent,
         gameFormat: format,
         gameDate: new Date().toISOString(),

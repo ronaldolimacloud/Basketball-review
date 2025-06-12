@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Player } from '../types/game.types';
 
 export const useGameClock = (onPlayersUpdate: (updater: (players: Player[]) => Player[]) => void) => {
   const [gameClock, setGameClock] = useState(0);
   const [isClockRunning, setIsClockRunning] = useState(false);
+  const onPlayersUpdateRef = useRef(onPlayersUpdate);
+
+  // Keep the callback reference up to date
+  useEffect(() => {
+    onPlayersUpdateRef.current = onPlayersUpdate;
+  }, [onPlayersUpdate]);
 
   useEffect(() => {
     let interval: number | null = null;
@@ -11,8 +17,8 @@ export const useGameClock = (onPlayersUpdate: (updater: (players: Player[]) => P
     if (isClockRunning) {
       interval = setInterval(() => {
         setGameClock(prev => prev + 1);
-        // Update time for players on court
-        onPlayersUpdate(prevPlayers => 
+        // Update time for players on court using stable ref
+        onPlayersUpdateRef.current(prevPlayers => 
           prevPlayers.map(player => {
             if (player.onCourt) {
               return {
@@ -32,7 +38,7 @@ export const useGameClock = (onPlayersUpdate: (updater: (players: Player[]) => P
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isClockRunning, onPlayersUpdate]);
+  }, [isClockRunning]); // Removed onPlayersUpdate dependency
 
   const toggleClock = () => {
     setIsClockRunning(!isClockRunning);
