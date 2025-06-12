@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, User, Trophy, TrendingUp, Camera, Eye, Upload } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
-import { FileUploader } from '@aws-amplify/ui-react-storage';
+import { uploadData } from 'aws-amplify/storage';
 import { PlayerImage } from './PlayerImage';
 import { PlayerDetail } from './PlayerDetail';
+import { resizeProfileImage, validateImageFile, formatFileSize, getImageDimensions } from '../../utils/imageUtils';
 
 interface PlayerProfilesProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -36,6 +37,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [imageProcessing, setImageProcessing] = useState(false);
+  const [originalImageSize, setOriginalImageSize] = useState<string>('');
+  const [resizedImageSize, setResizedImageSize] = useState<string>('');
 
   const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -43,56 +47,87 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     fetchPlayers();
   }, []);
 
-
-
-  // Handle file upload success from FileUploader
-  const handleFileUploadSuccess = (event: any) => {
-    console.log('🎉 Files uploaded successfully:', event);
-    console.log('🗝️ Event structure:', JSON.stringify(event, null, 2));
-    console.log('🔍 Event type:', typeof event);
-    console.log('🔍 Event keys:', Object.keys(event || {}));
-    
-    // Try different possible key formats
-    const fileName = event?.key || event?.path || event;
-    
-    if (fileName && typeof fileName === 'string') {
-      console.log('✅ Setting profile image path:', fileName);
-      console.log('📂 Full file path for StorageImage:', fileName);
-      setFormData(prev => ({ ...prev, profileImage: null, profileImageUrl: fileName }));
-    } else {
-      console.error('❌ No valid key found in upload success event');
-      console.error('❌ Received:', fileName);
+  // Upload optimized image to S3
+  const uploadOptimizedImage = async (file: File) => {
+    try {
+      setUploading(true);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const extension = file.name.split('.').pop() || 'jpg';
+      const filename = `player_${timestamp}_${randomString}.${extension}`;
+      const fullPath = `public/player-images/${filename}`;
+      
+      console.log('🚀 Uploading optimized image:', fullPath);
+      
+      const result = await uploadData({
+        path: fullPath,
+        data: file,
+        options: {
+          contentType: file.type,
+        }
+      }).result;
+      
+      console.log('✅ Upload successful:', result.path);
+      setFormData(prev => ({ ...prev, profileImageUrl: result.path }));
+      
+    } catch (error) {
+      console.error('❌ Upload failed:', error);
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
-  const handleFileUploadStart = (event: { key?: string }) => {
-    console.log('File upload started:', event);
-    setUploading(true);
-  };
+  // Custom file handler that resizes images before upload
+  const handleImageFileSelect = async (file: File, isEditMode: boolean = false) => {
+    try {
+      setImageProcessing(true);
+      
+      // Validate file
+      const validation = validateImageFile(file, 10); // 10MB max
+      if (!validation.isValid) {
+        alert(validation.error);
+        return;
+      }
 
-  const handleFileUploadError = (error: any, event: { key?: string }) => {
-    console.error('File upload error:', error, event);
-    alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
-    setUploading(false);
-  };
+      // Get original dimensions and size
+      const originalDimensions = await getImageDimensions(file);
+      const originalSize = formatFileSize(file.size);
+      setOriginalImageSize(originalSize);
+      
+      console.log(`📊 Original image: ${originalDimensions.width}x${originalDimensions.height}, Size: ${originalSize}`);
 
-  // Handle file upload success for edit mode
-  const handleEditFileUploadSuccess = (event: any) => {
-    console.log('🎉 Edit mode - Files uploaded successfully:', event);
-    console.log('🗝️ Edit Event structure:', JSON.stringify(event, null, 2));
-    
-    const fileName = event?.key || event?.path || event;
-    
-    if (fileName && typeof fileName === 'string') {
-      console.log('✅ Edit mode - Setting profile image path:', fileName);
-      setEditForm(prev => ({ ...prev, profileImage: null, profileImageUrl: fileName }));
-      setPreviewUrl(null); // Clear preview since we have uploaded image
-    } else {
-      console.error('❌ Edit mode - No valid key found in upload success event');
+      // Resize the image
+      const resizedFile = await resizeProfileImage(file);
+      const resizedDimensions = await getImageDimensions(resizedFile);
+      const resizedSize = formatFileSize(resizedFile.size);
+      setResizedImageSize(resizedSize);
+
+      console.log(`📊 Resized image: ${resizedDimensions.width}x${resizedDimensions.height}, Size: ${resizedSize}`);
+      console.log(`🎯 Size reduction: ${((file.size - resizedFile.size) / file.size * 100).toFixed(1)}%`);
+
+      // Create a preview URL for the resized image
+      const previewUrl = URL.createObjectURL(resizedFile);
+      setPreviewUrl(previewUrl);
+
+      // Store the resized file
+      if (isEditMode) {
+        setEditForm(prev => ({ ...prev, profileImage: resizedFile }));
+      } else {
+        setFormData(prev => ({ ...prev, profileImage: resizedFile }));
+      }
+      
+    } catch (error) {
+      console.error('❌ Error processing image:', error);
+      alert(`Failed to process image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setImageProcessing(false);
     }
-    setUploading(false);
   };
+
+
 
   const fetchPlayers = async () => {
     try {
@@ -225,10 +260,45 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
     };
   };
 
+  // Upload optimized image for edit mode
+  const uploadOptimizedImageEdit = async (file: File) => {
+    try {
+      setUploading(true);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const extension = file.name.split('.').pop() || 'jpg';
+      const filename = `player_${timestamp}_${randomString}.${extension}`;
+      const fullPath = `public/player-images/${filename}`;
+      
+      console.log('🚀 Uploading optimized image (edit mode):', fullPath);
+      
+      const result = await uploadData({
+        path: fullPath,
+        data: file,
+        options: {
+          contentType: file.type,
+        }
+      }).result;
+      
+      console.log('✅ Upload successful (edit mode):', result.path);
+      setEditForm(prev => ({ ...prev, profileImageUrl: result.path }));
+      
+    } catch (error) {
+      console.error('❌ Upload failed (edit mode):', error);
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
     setEditForm({ name: '', position: '', height: '', weight: '', jerseyNumber: '', profileImage: null, profileImageUrl: '' });
     setPreviewUrl(null);
+    setOriginalImageSize('');
+    setResizedImageSize('');
     setShowAddForm(false);
     setEditingPlayer(null);
   };
@@ -315,21 +385,91 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
           {/* Profile Image Upload */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-zinc-300 mb-3">Profile Picture</label>
-            <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4">
-              <FileUploader
-                acceptedFileTypes={['image/*']}
-                path="public/player-images/"
-                maxFileCount={1}
-                onUploadSuccess={handleFileUploadSuccess}
-                onUploadStart={handleFileUploadStart}
-                onUploadError={handleFileUploadError}
-                displayText={{
-                  dropFilesText: "Drop profile image here or",
-                  browseFilesText: "browse files",
-                  getUploadingText: () => "Uploading image..."
-                }}
-              />
+            
+            {/* Image Preview */}
+            {previewUrl && (
+              <div className="mb-4 flex items-center gap-4">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-600">
+                  <img 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="text-sm">
+                  <div className="text-zinc-300">✅ Image optimized and ready to upload</div>
+                  {originalImageSize && resizedImageSize && (
+                    <div className="text-zinc-400 mt-1">
+                      <div>Original: {originalImageSize}</div>
+                      <div>Optimized: {resizedImageSize}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* File Input */}
+            <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-6 border-dashed hover:border-yellow-500 transition-colors">
+              <div className="text-center">
+                <Camera className="w-12 h-12 mx-auto mb-4 text-zinc-400" />
+                <p className="text-zinc-300 mb-4">
+                  {imageProcessing ? 'Processing image...' : 'Select a profile image'}
+                </p>
+                <p className="text-sm text-zinc-500 mb-4">
+                  Images will be automatically optimized to 400x400px for faster loading
+                </p>
+                <label className="cursor-pointer">
+                  <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 disabled:from-zinc-600 disabled:to-zinc-700 px-6 py-3 rounded-lg font-semibold text-black transition-all transform hover:scale-105 shadow-lg inline-flex items-center gap-2">
+                    {imageProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4" />
+                        Choose Image
+                      </>
+                    )}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleImageFileSelect(file, false);
+                      }
+                    }}
+                    disabled={imageProcessing}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
+
+            {/* Upload to S3 button if we have a processed image */}
+            {formData.profileImage && (
+              <div className="mt-4">
+                <button
+                  onClick={() => uploadOptimizedImage(formData.profileImage!)}
+                  disabled={uploading}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:from-zinc-600 disabled:to-zinc-700 px-6 py-3 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2"
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Uploading to Cloud...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Upload Optimized Image to Cloud
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -598,9 +738,9 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                     
                     {/* Current Image Display */}
                     <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-40 h-40 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
-                <PlayerImage
-                  profileImageUrl={editForm.profileImageUrl || player.profileImageUrl}
+                      <div className="w-40 h-40 rounded-full bg-zinc-800 border-2 border-zinc-600 flex items-center justify-center overflow-hidden">
+                        <PlayerImage
+                          profileImageUrl={editForm.profileImageUrl || player.profileImageUrl}
                           className="w-full h-full object-cover"
                           alt={player.name}
                         />
@@ -611,22 +751,90 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
                       </div>
                     </div>
 
-                    {/* File Uploader */}
-                    <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-4">
-                      <FileUploader
-                        acceptedFileTypes={['image/*']}
-                        path="public/player-images/"
-                        maxFileCount={1}
-                        onUploadSuccess={handleEditFileUploadSuccess}
-                        onUploadStart={handleFileUploadStart}
-                        onUploadError={handleFileUploadError}
-                        displayText={{
-                          dropFilesText: "Drop new profile image here or",
-                          browseFilesText: "browse files",
-                          getUploadingText: () => "Uploading new image..."
-                        }}
-                      />
+                    {/* Image Preview for Edit Mode */}
+                    {previewUrl && editingPlayer === player.id && (
+                      <div className="mb-4 flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-600">
+                          <img 
+                            src={previewUrl} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="text-sm">
+                          <div className="text-zinc-300">✅ New image optimized and ready to upload</div>
+                          {originalImageSize && resizedImageSize && (
+                            <div className="text-zinc-400 mt-1">
+                              <div>Original: {originalImageSize}</div>
+                              <div>Optimized: {resizedImageSize}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* File Input for Edit Mode */}
+                    <div className="bg-zinc-800 border border-zinc-600 rounded-lg p-6 border-dashed hover:border-yellow-500 transition-colors">
+                      <div className="text-center">
+                        <Camera className="w-8 h-8 mx-auto mb-3 text-zinc-400" />
+                        <p className="text-zinc-300 mb-3">
+                          {imageProcessing ? 'Processing image...' : 'Select a new profile image'}
+                        </p>
+                        <p className="text-xs text-zinc-500 mb-3">
+                          Images will be automatically optimized to 400x400px
+                        </p>
+                        <label className="cursor-pointer">
+                          <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 disabled:from-zinc-600 disabled:to-zinc-700 px-4 py-2 rounded-lg font-semibold text-black transition-all inline-flex items-center gap-2 text-sm">
+                            {imageProcessing ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-black"></div>
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="w-3 h-3" />
+                                Choose New Image
+                              </>
+                            )}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageFileSelect(file, true);
+                              }
+                            }}
+                            disabled={imageProcessing}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
+
+                    {/* Upload to S3 button for edit mode */}
+                    {editForm.profileImage && editingPlayer === player.id && (
+                      <div className="mt-4">
+                        <button
+                          onClick={() => uploadOptimizedImageEdit(editForm.profileImage!)}
+                          disabled={uploading}
+                          className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:from-zinc-600 disabled:to-zinc-700 px-4 py-2 rounded-lg font-semibold text-white transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                          {uploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                              Uploading to Cloud...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3 h-3" />
+                              Upload Optimized Image
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
