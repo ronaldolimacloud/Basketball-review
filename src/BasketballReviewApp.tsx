@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut } from 'lucide-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
 import { GameReview } from './components/GameReview/GameReview';
 import { PlayerProfiles } from './components/PlayerProfiles/PlayerProfiles';
 import { GameHistory } from './components/GameHistory/GameHistory';
+import { LiveGames } from './components/LiveGames/LiveGames';
 
 // Generate the Amplify Data client
 const client = generateClient<Schema>();
 
-type TabType = 'game' | 'players' | 'history';
+type TabType = 'game' | 'players' | 'history' | 'live';
 
 const BasketballReviewApp = () => {
   const { user, signOut } = useAuthenticator();
@@ -33,6 +34,13 @@ const BasketballReviewApp = () => {
       icon: Play,
       component: GameReview,
       description: 'Live game tracking with video analysis'
+    },
+    {
+      id: 'live' as TabType,
+      label: 'Live Games',
+      icon: Radio,
+      component: LiveGames,
+      description: 'Follow live game feeds and play-by-play'
     },
     {
       id: 'history' as TabType,

@@ -359,9 +359,15 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-3xl font-bold text-yellow-400">{teamScore} - {opponentScore}</div>
-              <div className="text-sm text-zinc-400">Current Score</div>
+            <div className="text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-8 py-6 border-2 border-yellow-400/30 shadow-2xl">
+              <div className="text-6xl font-black text-yellow-400 tracking-wider flex items-center justify-center gap-4">
+                <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
+                <span className="text-emerald-400">{teamScore}</span>
+                <span className="text-zinc-400 text-4xl">×</span>
+                <span className="text-red-400">{opponentScore}</span>
+                <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
+              </div>
+              <div className="text-sm text-zinc-400 mt-2 font-medium tracking-wide">LIVE SCORE</div>
             </div>
           </div>
         </div>
