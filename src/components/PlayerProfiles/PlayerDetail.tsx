@@ -5,36 +5,31 @@ import { generateClient } from 'aws-amplify/data';
 import { PlayerImage } from './PlayerImage';
 
 interface PlayerDetailProps {
-  playerId: string;
+  player: any; // Player data passed from parent
   onBack: () => void;
   client: ReturnType<typeof generateClient<Schema>>;
 }
 
-export const PlayerDetail: React.FC<PlayerDetailProps> = ({ playerId, onBack, client }) => {
-  const [player, setPlayer] = useState<any>(null);
+export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, client }) => {
   const [gameStats, setGameStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPlayerData();
-  }, [playerId]);
+    fetchGameStats();
+  }, [player.id]);
 
-  const fetchPlayerData = async () => {
+  const fetchGameStats = async () => {
     try {
       setLoading(true);
       
-      // Fetch player details
-      const playerResult = await client.models.Player.get({ id: playerId });
-      setPlayer(playerResult.data);
-      
       // Fetch game stats for this player
       const gameStatsResult = await client.models.GameStat.list({
-        filter: { playerId: { eq: playerId } }
+        filter: { playerId: { eq: player.id } }
       });
       setGameStats(gameStatsResult.data || []);
       
     } catch (error) {
-      console.error('Error fetching player data:', error);
+      console.error('Error fetching game stats:', error);
     } finally {
       setLoading(false);
     }
@@ -73,14 +68,6 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ playerId, onBack, cl
       ...totals
     };
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
-      </div>
-    );
-  }
 
   if (!player) {
     return (

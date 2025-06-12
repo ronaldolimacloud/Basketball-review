@@ -8,7 +8,7 @@ interface PlayerImageProps {
   alt: string;
 }
 
-export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, className, alt }) => {
+const PlayerImageComponent: React.FC<PlayerImageProps> = ({ profileImageUrl, className, alt }) => {
   // If no profile image, show default avatar
   if (!profileImageUrl) {
     return (
@@ -23,12 +23,19 @@ export const PlayerImage: React.FC<PlayerImageProps> = ({ profileImageUrl, class
       path={profileImageUrl}
       alt={alt}
       className={className}
-      bucket="basketballPlayerImages"
+      validateObjectExistence={false}
+      loadingElement={<div className={`${className} animate-pulse bg-zinc-700/50 flex items-center justify-center`}>
+        <User className="w-8 h-8 text-zinc-500/50" />
+      </div>}
       fallbackSrc="/default-player.png"
       onGetUrlError={(error) => {
-        console.error('Error loading image from storage:', error);
+        console.error('Image load error:', error);
         console.error('Failed path:', profileImageUrl);
       }}
     />
   );
 };
+
+PlayerImageComponent.displayName = 'PlayerImage';
+
+export const PlayerImage = React.memo(PlayerImageComponent);

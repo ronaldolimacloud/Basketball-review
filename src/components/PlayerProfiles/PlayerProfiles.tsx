@@ -246,9 +246,14 @@ export const PlayerProfiles: React.FC<PlayerProfilesProps> = ({ client }) => {
 
   // If a player is selected, show the player detail view
   if (selectedPlayerId) {
+    const selectedPlayer = players.find(p => p.id === selectedPlayerId);
+    if (!selectedPlayer) {
+      setSelectedPlayerId(null); // Reset if player not found
+      return null;
+    }
     return (
       <PlayerDetail 
-        playerId={selectedPlayerId} 
+        player={selectedPlayer}
         onBack={() => setSelectedPlayerId(null)}
         client={client}
       />
