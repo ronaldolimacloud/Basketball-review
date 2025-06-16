@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat, PeriodScore, StatType } from '../../types/game.types';
 
 // Components (keeping the original game components)
-import { VideoPlayer } from '../VideoPlayer/VideoPlayer';
+import { VideoClipEditor } from '../VideoPlayer/VideoClipEditor';
+import { ClipLibrary } from '../VideoClips/ClipLibrary';
+import { ClipViewer } from '../VideoClips/ClipViewer';
 import { GameClock } from '../GameClock';
 import { ScoreBoard } from '../ScoreBoard';
 import { StatButtons, BoxScore } from '../StatTracker';
 import { GameSetupForm } from './GameSetupForm';
 import { SubstitutionModal } from '../PlayerManagement/SubstitutionModal';
 import { StatCorrectionModal } from './StatCorrectionModal';
+import { ConfirmationModal } from './ConfirmationModal';
+import { GameScoreEditModal } from './GameScoreEditModal';
+import { ExportModal } from './ExportModal';
 
 // Hooks
 import { useGameClock } from '../../hooks/useGameClock';
@@ -21,7 +26,7 @@ import { calculateTeamFouls } from '../../utils/statCalculations';
 import { createPeriodScore, getMaxPeriods } from '../../utils/gameHelpers';
 
 // Icons
-import { Play, Users, BarChart3, Edit3 } from 'lucide-react';
+import { Users, BarChart3, Edit3, Download, Video, Clock, Scissors } from 'lucide-react';
 
 interface GameReviewProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -77,6 +82,21 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   // Stat correction state
   const [isStatCorrectionModalOpen, setIsStatCorrectionModalOpen] = useState(false);
   const [playerToCorrect, setPlayerToCorrect] = useState<GamePlayer | null>(null);
+
+  // Delete confirmation state
+  const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
+  const [playerToDelete, setPlayerToDelete] = useState<GamePlayer | null>(null);
+
+  // Score edit state
+  const [isScoreEditModalOpen, setIsScoreEditModalOpen] = useState(false);
+
+  // Export state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Video clips state
+  const [activeVideoTab, setActiveVideoTab] = useState<'player' | 'library'>('player');
+  const [selectedClip, setSelectedClip] = useState<any>(null);
+  const [videoSrc] = useState<string>('');
 
   
   // Initialize game stats hook - this manages the actual player state
@@ -227,6 +247,73 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
     setPlayerToCorrect(null);
   };
 
+  const handleDeletePlayerStatsRequest = (player: GamePlayer) => {
+    setPlayerToDelete(player);
+    setIsDeleteConfirmModalOpen(true);
+  };
+
+  const handleDeletePlayerStats = () => {
+    if (!playerToDelete) return;
+
+    const handleTeamScoreChange = (pointsDifference: number) => {
+      setTeamScore(prev => prev + pointsDifference);
+      console.log(`Team score adjusted by ${pointsDifference} points due to stat deletion`);
+    };
+
+    gameStats.resetPlayerStats(playerToDelete.id, handleTeamScoreChange);
+    setIsDeleteConfirmModalOpen(false);
+    setPlayerToDelete(null);
+  };
+
+  const handleCancelDeletePlayerStats = () => {
+    setIsDeleteConfirmModalOpen(false);
+    setPlayerToDelete(null);
+  };
+
+  const handleEditScoreRequest = () => {
+    setIsScoreEditModalOpen(true);
+  };
+
+  const handleScoreEdit = (newTeamScore: number, newOpponentScore: number) => {
+    setTeamScore(newTeamScore);
+    setOpponentScore(newOpponentScore);
+    setIsScoreEditModalOpen(false);
+    
+    console.log('Score edited:', {
+      newTeamScore,
+      newOpponentScore,
+      previousTeamScore: teamScore,
+      previousOpponentScore: opponentScore
+    });
+  };
+
+  const handleCancelScoreEdit = () => {
+    setIsScoreEditModalOpen(false);
+  };
+
+  const handleExportRequest = () => {
+    setIsExportModalOpen(true);
+  };
+
+  // Video clip handlers
+  const handleClipCreated = (clipData: any) => {
+    console.log('Clip created:', clipData);
+    // Optionally switch to library view to see the new clip
+    setActiveVideoTab('library');
+  };
+
+  const handleClipSelect = (clip: any) => {
+    setSelectedClip(clip);
+  };
+
+  const handleClipViewerClose = () => {
+    setSelectedClip(null);
+  };
+
+  const handleCancelExport = () => {
+    setIsExportModalOpen(false);
+  };
+
   const handleFinishGame = async () => {
     if (!currentGame) return;
 
@@ -344,7 +431,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-8 py-6 border-2 border-yellow-400/30 shadow-2xl">
+            <div className="relative text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-8 py-6 border-2 border-yellow-400/30 shadow-2xl group">
               <div className="text-6xl font-black text-yellow-400 tracking-wider flex items-center justify-center gap-4">
                 <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
                 <span className="text-emerald-400">{teamScore}</span>
@@ -353,6 +440,15 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
                 <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
               </div>
               <div className="text-sm text-zinc-400 mt-2 font-medium tracking-wide">LIVE SCORE</div>
+              
+              {/* Edit Score Button */}
+              <button
+                onClick={handleEditScoreRequest}
+                className="absolute top-3 right-3 p-2 bg-zinc-800/80 hover:bg-zinc-700 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                title="Edit Score"
+              >
+                <Edit3 className="w-4 h-4 text-zinc-400 hover:text-yellow-400" />
+              </button>
             </div>
           </div>
         </div>
@@ -364,12 +460,51 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         {/* Left Column - Video Player */}
         <div className="xl:col-span-2 flex flex-col min-h-0">
           <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 flex-1 flex flex-col">
-            <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
-              <Play className="w-5 h-5" />
-              Game Video Analysis
-            </h3>
+            {/* Video Tabs */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
+                <Video className="w-5 h-5" />
+                Video Analysis & Clips
+              </h3>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveVideoTab('player')}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 text-sm ${
+                    activeVideoTab === 'player'
+                      ? 'bg-yellow-500 text-black font-medium'
+                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                  }`}
+                >
+                  <Scissors className="w-4 h-4" />
+                  Clip Editor
+                </button>
+                <button
+                  onClick={() => setActiveVideoTab('library')}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 text-sm ${
+                    activeVideoTab === 'library'
+                      ? 'bg-yellow-500 text-black font-medium'
+                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  Clip Library
+                </button>
+              </div>
+            </div>
+            
             <div className="flex-1 min-h-0">
-              <VideoPlayer />
+              {activeVideoTab === 'player' ? (
+                <VideoClipEditor 
+                  gameId={currentGame?.id}
+                  onClipCreated={handleClipCreated}
+                />
+              ) : (
+                <ClipLibrary 
+                  gameId={currentGame?.id}
+                  onClipSelect={handleClipSelect}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -499,12 +634,39 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
 
       {/* Box Score - Full Width */}
       <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-        <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" />
-          Live Box Score
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Live Box Score
+          </h3>
+          
+          <button
+            onClick={handleExportRequest}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Export Data
+          </button>
+        </div>
         <div className="overflow-x-auto">
-          <BoxScore players={convertToLegacyPlayers(gameStats.players)} teamName={teamName} />
+          <BoxScore 
+            players={convertToLegacyPlayers(gameStats.players)} 
+            teamName={teamName}
+            onEditPlayerStats={(player) => {
+              // Convert legacy player back to GamePlayer format
+              const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
+              if (gamePlayer) {
+                handleStatCorrectionRequest(gamePlayer);
+              }
+            }}
+            onDeletePlayerStats={(player) => {
+              // Convert legacy player back to GamePlayer format
+              const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
+              if (gamePlayer) {
+                handleDeletePlayerStatsRequest(gamePlayer);
+              }
+            }}
+          />
         </div>
       </div>
 
@@ -534,6 +696,51 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         onSave={handleStatCorrection}
         onCancel={handleCancelStatCorrection}
       />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteConfirmModalOpen}
+        title="Delete Player Stats"
+        message={`Are you sure you want to delete all stats for ${playerToDelete?.name}? This action cannot be undone. The player's time on court will be preserved.`}
+        confirmText="Delete Stats"
+        cancelText="Cancel"
+        onConfirm={handleDeletePlayerStats}
+        onCancel={handleCancelDeletePlayerStats}
+        type="danger"
+      />
+
+      {/* Game Score Edit Modal */}
+      <GameScoreEditModal
+        isOpen={isScoreEditModalOpen}
+        teamName={teamName}
+        opponentName={opponentName}
+        currentTeamScore={teamScore}
+        currentOpponentScore={opponentScore}
+        onSave={handleScoreEdit}
+        onCancel={handleCancelScoreEdit}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        teamName={teamName}
+        opponentName={opponentName}
+        teamScore={teamScore}
+        opponentScore={opponentScore}
+        players={convertToLegacyPlayers(gameStats.players)}
+        gameDate={currentGame?.gameDate ? new Date(currentGame.gameDate) : new Date()}
+        totalDuration={gameClock.gameClock}
+        onCancel={handleCancelExport}
+      />
+
+      {/* Clip Viewer Modal */}
+      {selectedClip && (
+        <ClipViewer
+          clip={selectedClip}
+          videoSrc={videoSrc}
+          onClose={handleClipViewerClose}
+        />
+      )}
     </div>
   );
 }; 

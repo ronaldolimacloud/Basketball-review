@@ -38,6 +38,7 @@ interface UseGameStatsResult {
   setPlayers: React.Dispatch<React.SetStateAction<GamePlayer[]>>;
   updateTimeOnCourt: (currentGameTime: number) => void;
   correctPlayerStats: (playerId: string, newStats: GamePlayer['stats'], onTeamScoreChange?: (pointsDifference: number) => void) => void;
+  resetPlayerStats: (playerId: string, onTeamScoreChange?: (pointsDifference: number) => void) => void;
 }
 
 export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult => {
@@ -235,6 +236,55 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     });
   }, []);
 
+  const resetPlayerStats = useCallback((playerId: string, onTeamScoreChange?: (pointsDifference: number) => void) => {
+    setPlayers(prevPlayers => {
+      const targetPlayer = prevPlayers.find(p => p.id === playerId);
+      if (!targetPlayer) return prevPlayers;
+
+      const oldPoints = targetPlayer.stats.points;
+      
+      // Reset stats to zero but keep timeOnCourt
+      const resetStats: GamePlayer['stats'] = {
+        points: 0,
+        fouls: 0,
+        turnovers: 0,
+        offRebounds: 0,
+        defRebounds: 0,
+        assists: 0,
+        steals: 0,
+        blocks: 0,
+        fgMade: 0,
+        fgAttempts: 0,
+        ftMade: 0,
+        ftAttempts: 0,
+        plusMinus: 0,
+        timeOnCourt: targetPlayer.stats.timeOnCourt // Keep time tracking
+      };
+
+      // If player had points, subtract them from team score
+      if (oldPoints > 0 && onTeamScoreChange) {
+        onTeamScoreChange(-oldPoints);
+      }
+
+      console.log('Player stats reset:', {
+        playerId,
+        playerName: targetPlayer.name,
+        oldPoints,
+        pointsRemoved: oldPoints
+      });
+
+      return prevPlayers.map(player => {
+        if (player.id === playerId) {
+          return {
+            ...player,
+            stats: resetStats
+          };
+        }
+        return player;
+      });
+    });
+  }, []);
+
   return {
     players,
     selectedPlayerId,
@@ -247,5 +297,6 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     setPlayers,
     updateTimeOnCourt,
     correctPlayerStats,
+    resetPlayerStats,
   };
 }; 

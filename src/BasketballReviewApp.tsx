@@ -6,7 +6,6 @@ import type { Schema } from '../amplify/data/resource';
 
 // Components
 import { GameReview } from './components/GameReview/GameReview';
-import { PlayerProfiles } from './components/PlayerProfiles/PlayerProfiles';
 import { PlayersWithTeamAssignment } from './components/PlayerProfiles/PlayersWithTeamAssignment';
 import { MyTeams } from './components/MyTeams/MyTeams';
 import { GameHistory } from './components/GameHistory/GameHistory';

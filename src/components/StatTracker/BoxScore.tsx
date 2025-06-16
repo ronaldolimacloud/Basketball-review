@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award } from 'lucide-react';
+import { Award, Trash2, Edit3 } from 'lucide-react';
 import type { Player } from '../../types/game.types';
 import { calculateFGPercentage, calculateFTPercentage, calculateTotalRebounds } from '../../utils/statCalculations';
 import { formatTime } from '../../utils/timeFormatters';
@@ -7,9 +7,11 @@ import { formatTime } from '../../utils/timeFormatters';
 interface BoxScoreProps {
   players: Player[];
   teamName: string;
+  onEditPlayerStats?: (player: Player) => void;
+  onDeletePlayerStats?: (player: Player) => void;
 }
 
-export const BoxScore: React.FC<BoxScoreProps> = ({ players, teamName }) => {
+export const BoxScore: React.FC<BoxScoreProps> = ({ players, teamName, onEditPlayerStats, onDeletePlayerStats }) => {
   return (
     <div className="mt-6 bg-zinc-900 rounded-lg p-4 border border-zinc-700">
       <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-yellow-400">
@@ -35,6 +37,9 @@ export const BoxScore: React.FC<BoxScoreProps> = ({ players, teamName }) => {
               <th className="text-center px-2 text-zinc-300">TO</th>
               <th className="text-center px-2 text-zinc-300">PF</th>
               <th className="text-center px-2 text-zinc-300">+/-</th>
+              {(onEditPlayerStats || onDeletePlayerStats) && (
+                <th className="text-center px-2 text-zinc-300">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -61,6 +66,30 @@ export const BoxScore: React.FC<BoxScoreProps> = ({ players, teamName }) => {
                 <td className={`text-center font-semibold ${player.stats.plusMinus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {player.stats.plusMinus > 0 ? '+' : ''}{player.stats.plusMinus}
                 </td>
+                {(onEditPlayerStats || onDeletePlayerStats) && (
+                  <td className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      {onEditPlayerStats && (
+                        <button
+                          onClick={() => onEditPlayerStats(player)}
+                          className="p-1.5 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                          title="Edit Player Stats"
+                        >
+                          <Edit3 className="w-3 h-3 text-white" />
+                        </button>
+                      )}
+                      {onDeletePlayerStats && (
+                        <button
+                          onClick={() => onDeletePlayerStats(player)}
+                          className="p-1.5 bg-red-600 hover:bg-red-700 rounded transition-colors"
+                          title="Delete Player Stats"
+                        >
+                          <Trash2 className="w-3 h-3 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

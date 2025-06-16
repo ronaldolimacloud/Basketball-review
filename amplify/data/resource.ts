@@ -137,6 +137,95 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),  // Only the user who created the game stat can access it
     ]),
+
+  // Video Clip Management
+  VideoClip: a
+    .model({
+      gameId: a.id().required(),
+      title: a.string().required(),
+      description: a.string(),
+      
+      // Video timing
+      startTime: a.float().required(), // Start time in seconds
+      endTime: a.float().required(),   // End time in seconds
+      
+      // File information
+      clipUrl: a.string(), // URL to the processed clip file
+      thumbnailUrl: a.string(), // URL to thumbnail image
+      
+      // Organization and visibility
+      visibility: a.enum(['team', 'player', 'coach']),
+      assignedPlayerIds: a.json(), // Array of player IDs who can see this clip
+      
+      // Tagging and categorization
+      tags: a.json(), // Array of tags like ["defense", "fast-break", "mistake"]
+      playType: a.string(), // e.g., "offense", "defense", "transition"
+      priority: a.enum(['high', 'medium', 'low']),
+      
+      // Coach feedback
+      coachNotes: a.string(),
+      learningObjective: a.string(),
+      
+      // Status
+      isProcessed: a.boolean().default(false),
+      
+      // Relationships
+      game: a.belongsTo('Game', 'gameId'),
+      clipFeedbacks: a.hasMany('ClipFeedback', 'clipId'),
+    })
+    .authorization((allow) => [
+      allow.owner(),  // Only the user who created the clip can access it
+    ]),
+
+  // Coach feedback on specific clips
+  ClipFeedback: a
+    .model({
+      clipId: a.id().required(),
+      playerId: a.id().required(),
+      
+      // Feedback content
+      feedbackText: a.string().required(),
+      feedbackType: a.enum(['praise', 'improvement', 'instruction', 'question']),
+      timestamp: a.float(), // Specific timestamp in the clip for targeted feedback
+      
+      // Status tracking
+      isRead: a.boolean().default(false),
+      isAcknowledged: a.boolean().default(false),
+      
+      // Relationships
+      clip: a.belongsTo('VideoClip', 'clipId'),
+      player: a.belongsTo('Player', 'playerId'),
+    })
+    .authorization((allow) => [
+      allow.owner(),  // Only the user who created the feedback can access it
+    ]),
+
+  // Player Goals and Progress Tracking
+  PlayerGoal: a
+    .model({
+      playerId: a.id().required(),
+      coachId: a.id(), // ID of the coach who set the goal
+      
+      // Goal details
+      title: a.string().required(),
+      description: a.string(),
+      targetDate: a.datetime(),
+      category: a.enum(['technical', 'physical', 'mental', 'tactical']),
+      
+      // Progress tracking
+      status: a.enum(['active', 'completed', 'paused', 'cancelled']),
+      progressNotes: a.json(), // Array of progress updates
+      completionDate: a.datetime(),
+      
+      // Associated content
+      relatedClipIds: a.json(), // Array of video clip IDs related to this goal
+      
+      // Relationships
+      player: a.belongsTo('Player', 'playerId'),
+    })
+    .authorization((allow) => [
+      allow.owner(),  // Only the user who created the goal can access it
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
