@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio } from 'lucide-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, UserCheck, Key } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
@@ -10,11 +10,13 @@ import { PlayersWithTeamAssignment } from './components/PlayerProfiles/PlayersWi
 import { MyTeams } from './components/MyTeams/MyTeams';
 import { GameHistory } from './components/GameHistory/GameHistory';
 import { LiveGames } from './components/LiveGames/LiveGames';
+import { PlayerPortal } from './components/PlayerPortal/PlayerPortal';
+import { PlayerAccessManager } from './components/PlayerManagement/PlayerAccessManager';
 
 // Generate the Amplify Data client
 const client = generateClient<Schema>();
 
-type TabType = 'game' | 'players' | 'teams' | 'history' | 'live';
+type TabType = 'game' | 'players' | 'teams' | 'history' | 'live' | 'portal' | 'access';
 
 const BasketballReviewApp = () => {
   const { user, signOut } = useAuthenticator();
@@ -56,6 +58,20 @@ const BasketballReviewApp = () => {
       icon: History,
       component: GameHistory,
       description: 'Review past games and statistics'
+    },
+    {
+      id: 'portal' as TabType,
+      label: 'Player Portal',
+      icon: UserCheck,
+      component: PlayerPortal,
+      description: 'Player access to personal stats and videos'
+    },
+    {
+      id: 'access' as TabType,
+      label: 'Access Management',
+      icon: Key,
+      component: PlayerAccessManager,
+      description: 'Manage player portal access codes'
     }
   ];
 
@@ -181,7 +197,11 @@ const BasketballReviewApp = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <div className="h-full">
-            <ActiveComponent client={client} />
+            {activeTab === 'portal' ? (
+              <PlayerPortal />
+            ) : (
+              <ActiveComponent client={client} />
+            )}
           </div>
         </main>
       </div>

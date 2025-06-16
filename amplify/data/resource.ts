@@ -16,6 +16,14 @@ const schema = a.schema({
       profileImageUrl: a.string(), // URL to profile picture
       isActive: a.boolean().default(true),
       totalGamesPlayed: a.integer().default(0),
+      
+      // Player portal access
+      accessCode: a.string(), // Unique code for player to access their portal
+      lastAccessDate: a.datetime(),
+      
+      // Player preferences
+      preferredNotifications: a.json(), // Array of notification preferences
+      personalNotes: a.string(), // Player's personal notes
       // Career totals
       careerPoints: a.integer().default(0),
       careerAssists: a.integer().default(0),
