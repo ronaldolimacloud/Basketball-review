@@ -6,6 +6,7 @@ export interface Team {
   id: string;
   name: string;
   description?: string;
+  logoUrl?: string;
   isActive: boolean;
   playerCount?: number;
   createdAt?: string;
@@ -29,7 +30,7 @@ interface UseTeamManagementResult {
   loading: boolean;
   
   // Team operations
-  createTeam: (name: string, description?: string) => Promise<Team | null>;
+  createTeam: (name: string, description?: string, logoUrl?: string) => Promise<Team | null>;
   updateTeam: (teamId: string, updates: Partial<Team>) => Promise<boolean>;
   deleteTeam: (teamId: string) => Promise<boolean>;
   setSelectedTeamId: (teamId: string | null) => void;
@@ -69,6 +70,7 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
             id: team.id,
             name: team.name,
             description: team.description || undefined,
+            logoUrl: team.logoUrl || undefined,
             isActive: team.isActive || true,
             playerCount: teamPlayersResult.data?.length || 0,
             createdAt: team.createdAt,
@@ -112,6 +114,7 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
             id: team.id,
             name: team.name,
             description: team.description,
+            logoUrl: team.logoUrl,
             isActive: team.isActive || true
           } : null;
         }).filter(Boolean) as Team[];
@@ -136,11 +139,12 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
   }, [client]);
 
   // Create a new team
-  const createTeam = useCallback(async (name: string, description?: string): Promise<Team | null> => {
+  const createTeam = useCallback(async (name: string, description?: string, logoUrl?: string): Promise<Team | null> => {
     try {
       const result = await client.models.Team.create({
         name: name.trim(),
         description: description?.trim(),
+        logoUrl: logoUrl?.trim(),
         isActive: true
       });
 
@@ -149,6 +153,7 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
           id: result.data.id,
           name: result.data.name,
           description: result.data.description || undefined,
+          logoUrl: result.data.logoUrl || undefined,
           isActive: result.data.isActive || true,
           playerCount: 0
         };

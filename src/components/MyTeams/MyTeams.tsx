@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Users, ChevronDown, ChevronRight, Settings, UserPlus, FolderPlus, Trophy } from 'lucide-react';
+import { Users, ChevronDown, ChevronRight, Settings, UserPlus, FolderPlus, Trophy } from 'lucide-react';
+import { StorageImage } from '@aws-amplify/ui-react-storage';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { useTeamManagement, type Team, type PlayerWithTeam } from '../../hooks/useTeamManagement';
@@ -23,8 +24,8 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
   // Team operations
-  const handleCreateTeam = async (name: string, description?: string): Promise<boolean> => {
-    const result = await teamManagement.createTeam(name, description);
+  const handleCreateTeam = async (name: string, description?: string, logoUrl?: string): Promise<boolean> => {
+    const result = await teamManagement.createTeam(name, description, logoUrl);
     return result !== null;
   };
 
@@ -87,7 +88,7 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
               </span>
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                Active Teams: {teamManagement.teams.filter(t => t.isActive).length}
+                Total Teams: {teamManagement.teams.length}
               </span>
             </div>
           </div>
@@ -181,8 +182,27 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
                     ) : (
                       <ChevronRight className="w-5 h-5 text-zinc-400" />
                     )}
-                    <div className="p-2 bg-yellow-500/10 rounded-lg">
-                      <Trophy className="w-6 h-6 text-yellow-400" />
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-700 flex items-center justify-center border border-zinc-600">
+                      {team.logoUrl ? (
+                        <StorageImage
+                          path={team.logoUrl}
+                          alt={`${team.name} logo`}
+                          className="w-full h-full object-cover"
+                          validateObjectExistence={true}
+                          loadingElement={
+                            <div className="w-full h-full animate-pulse bg-zinc-600/50 flex items-center justify-center">
+                              <Trophy className="w-4 h-4 text-zinc-500/50" />
+                            </div>
+                          }
+                          fallbackSrc=""
+                          onGetUrlError={(error) => {
+                            console.error(`❌ StorageImage error for team logo: ${team.logoUrl}`);
+                            console.error('❌ Error details:', error);
+                          }}
+                        />
+                      ) : (
+                        <Trophy className="w-6 h-6 text-yellow-400" />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{team.name}</h3>
@@ -193,15 +213,6 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <div className={`
-                      px-3 py-1 rounded-full text-sm font-medium
-                      ${team.isActive 
-                        ? 'bg-emerald-500/10 text-emerald-400' 
-                        : 'bg-red-500/10 text-red-400'
-                      }
-                    `}>
-                      {team.isActive ? 'Active' : 'Inactive'}
-                    </div>
                     <div className="text-sm text-zinc-400">
                       Click to {isExpanded ? 'collapse' : 'expand'}
                     </div>

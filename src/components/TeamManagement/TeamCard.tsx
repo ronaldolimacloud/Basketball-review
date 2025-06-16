@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Edit3, Trash2, MoreVertical } from 'lucide-react';
+import { StorageImage } from '@aws-amplify/ui-react-storage';
 import type { Team } from '../../hooks/useTeamManagement';
 
 interface TeamCardProps {
@@ -94,12 +95,39 @@ export const TeamCard: React.FC<TeamCardProps> = ({
 
       {/* Team Info */}
       <div className="space-y-4">
-        {/* Team Name */}
-        <div>
-          <h3 className="text-xl font-bold text-white mb-1 pr-8">{team.name}</h3>
-          {team.description && (
-            <p className="text-sm text-zinc-400 line-clamp-2">{team.description}</p>
-          )}
+        {/* Team Logo & Name */}
+        <div className="flex items-center gap-3">
+          {/* Team Logo */}
+          <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-700 flex items-center justify-center flex-shrink-0 border border-zinc-600">
+            {team.logoUrl ? (
+              <StorageImage
+                path={team.logoUrl}
+                alt={`${team.name} logo`}
+                className="w-full h-full object-cover"
+                validateObjectExistence={true}
+                loadingElement={
+                  <div className="w-full h-full animate-pulse bg-zinc-600/50 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-zinc-500/50" />
+                  </div>
+                }
+                fallbackSrc=""
+                onGetUrlError={(error) => {
+                  console.error(`❌ StorageImage error for team logo: ${team.logoUrl}`);
+                  console.error('❌ Error details:', error);
+                }}
+              />
+            ) : (
+              <Users className="w-6 h-6 text-zinc-400" />
+            )}
+          </div>
+          
+          {/* Team Name & Description */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-bold text-white mb-1 truncate">{team.name}</h3>
+            {team.description && (
+              <p className="text-sm text-zinc-400 line-clamp-2">{team.description}</p>
+            )}
+          </div>
         </div>
 
         {/* Stats */}
@@ -115,15 +143,8 @@ export const TeamCard: React.FC<TeamCardProps> = ({
           </div>
 
           <div className="text-right">
-            <div className={`
-              inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-              ${team.isActive 
-                ? 'bg-emerald-500/10 text-emerald-400' 
-                : 'bg-red-500/10 text-red-400'
-              }
-            `}>
-              <div className={`w-2 h-2 rounded-full ${team.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              {team.isActive ? 'Active' : 'Inactive'}
+            <div className="text-xs text-zinc-400">
+              {team.playerCount || 0} member{(team.playerCount || 0) !== 1 ? 's' : ''}
             </div>
           </div>
         </div>

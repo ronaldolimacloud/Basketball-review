@@ -41,6 +41,8 @@ const schema = a.schema({
       // Relationships
       gameStats: a.hasMany('GameStat', 'playerId'),
       teamPlayers: a.hasMany('TeamPlayer', 'playerId'),
+      clipFeedbacks: a.hasMany('ClipFeedback', 'playerId'),
+      playerGoals: a.hasMany('PlayerGoal', 'playerId'),
     })
     .authorization((allow) => [
       allow.owner(),  // Only the user who created the player can access it
@@ -51,6 +53,7 @@ const schema = a.schema({
     .model({
       name: a.string().required(),
       description: a.string(),
+      logoUrl: a.string(), // URL to team logo
       isActive: a.boolean().default(true),
       
       // Relationships
@@ -108,6 +111,7 @@ const schema = a.schema({
       homeTeam: a.belongsTo('Team', 'homeTeamId'),
       awayTeam: a.belongsTo('Team', 'awayTeamId'),
       gameStats: a.hasMany('GameStat', 'gameId'),
+      videoClips: a.hasMany('VideoClip', 'gameId'),
     })
     .authorization((allow) => [
       allow.owner(),  // Only the user who created the game can access it

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, User, TrendingUp, Settings, Users, Save, X, Camera, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, User, Users, TrendingUp, Settings, Save, X, Camera, Upload } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
@@ -19,6 +19,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
   // Local player state
   const [players, setPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   
   // Team assignment state
@@ -58,35 +59,36 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
   const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
 
   useEffect(() => {
-    fetchPlayers();
+    // Add a small delay to ensure Amplify is fully initialized
+    const timer = setTimeout(() => {
+      fetchPlayers();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching players...');
-      const result = await client.models.Player.list();
-      console.log('📦 Raw result from API:', result);
-      console.log('👥 Players data:', result.data);
-      console.log('📊 Number of players:', result.data?.length || 0);
+      setError(null);
       
-      // Log any GraphQL errors
+      const result = await client.models.Player.list();
+      
+      if (!result) {
+        setError('Unable to fetch players. Please try again.');
+        setPlayers([]);
+        return;
+      }
+      
       if (result.errors && result.errors.length > 0) {
-        console.error('🚨 GraphQL Errors when fetching players:', result.errors);
-        console.error('🚨 Errors as JSON:', JSON.stringify(result.errors, null, 2));
+        setError(`Error loading players: ${result.errors.map(e => e.message).join(', ')}`);
       }
       
       setPlayers(result.data || []);
-      
-      // Debug player image URLs
-      if (result.data && result.data.length > 0) {
-        console.log('🖼️ Player profile image URLs:');
-        result.data.forEach(player => {
-          console.log(`  ${player.name}: ${player.profileImageUrl || 'NO IMAGE'}`);
-        });
-      }
     } catch (error) {
-      console.error('❌ Error fetching players:', error);
+      console.error('Error fetching players:', error);
+      setError(`Failed to fetch players: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setPlayers([]);
     } finally {
       setLoading(false);
     }
@@ -380,6 +382,42 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
     );
   }
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <p className="text-zinc-400">Loading players...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Unable to Load Players</h3>
+          <p className="text-zinc-400 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              fetchPlayers();
+            }}
+            className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded-lg text-black font-medium transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col space-y-6">
       {/* Dashboard Header */}
@@ -623,42 +661,107 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
         </div>
       )}
 
-      {/* Players Grid */}
+      {/* Enhanced Players Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {players.map(player => {
           const playerTeams = getPlayerTeams(player.id);
+          const careerAvgPoints = player.totalGamesPlayed > 0 ? (player.careerPoints / player.totalGamesPlayed).toFixed(1) : '0.0';
+          const careerAvgAssists = player.totalGamesPlayed > 0 ? (player.careerAssists / player.totalGamesPlayed).toFixed(1) : '0.0';
+          const careerAvgRebounds = player.totalGamesPlayed > 0 ? (player.careerRebounds / player.totalGamesPlayed).toFixed(1) : '0.0';
           
           return (
-            <div key={player.id} className="bg-zinc-900 rounded-xl border border-zinc-700 hover:border-zinc-600 transition-colors shadow-lg">
-              {/* Player Image */}
+            <div 
+              key={player.id} 
+              onClick={() => setSelectedPlayerId(player.id)}
+              className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl border border-zinc-700 hover:border-yellow-500/30 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] group cursor-pointer">
+              {/* Player Image with Gradient Overlay */}
               <div className="relative">
                 <div className="w-full aspect-square bg-zinc-800 rounded-t-xl overflow-hidden">
                   <PlayerImage 
                     profileImageUrl={player.profileImageUrl}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full transition-transform duration-300 group-hover:scale-105"
                     alt={player.name}
                   />
+                  {/* Gradient overlay for better text visibility */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                  
+                  {/* Jersey Number Badge */}
+                  {player.jerseyNumber && (
+                    <div className="absolute top-3 right-3 bg-yellow-500 text-black font-bold text-sm px-2 py-1 rounded-full">
+                      #{player.jerseyNumber}
+                    </div>
+                  )}
+                  
+                  {/* Position Badge */}
+                  {player.position && (
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+                      {player.position}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Player Info */}
+              {/* Enhanced Player Info */}
               <div className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{player.name}</h3>
+                {/* Header with name and status */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-1 group-hover:text-yellow-400 transition-colors">
+                      {player.name}
+                    </h3>
                     <div className="flex items-center gap-2 text-sm text-zinc-400">
-                      {player.position && <span>{player.position}</span>}
+                      {player.height && (
+                        <>
+                          <span>{player.height}</span>
+                        </>
+                      )}
+                      {player.weight && (
+                        <>
+                          {player.height && <span className="text-zinc-600">•</span>}
+                          <span>{player.weight}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Team Assignments */}
+                {/* Quick Stats Display */}
+                <div className="mb-4 bg-zinc-800/50 rounded-lg p-3">
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div>
+                      <div className="text-lg font-bold text-emerald-400">{careerAvgPoints}</div>
+                      <div className="text-xs text-zinc-400">PPG</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-blue-400">{careerAvgAssists}</div>
+                      <div className="text-xs text-zinc-400">APG</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-purple-400">{careerAvgRebounds}</div>
+                      <div className="text-xs text-zinc-400">RPG</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-zinc-700 flex justify-center">
+                    <div className="text-center">
+                      <div className="text-sm font-medium text-white">{player.totalGamesPlayed || 0}</div>
+                      <div className="text-xs text-zinc-400">Games Played</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team Assignments with enhanced styling */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-zinc-300">Teams</span>
+                    <span className="text-sm font-medium text-zinc-300 flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      Teams
+                    </span>
                     <button
-                      onClick={() => handlePlayerAssignment(player)}
-                      className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlayerAssignment(player);
+                      }}
+                      className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 hover:bg-yellow-500/10 px-2 py-1 rounded transition-all"
                     >
                       <Settings className="w-3 h-3" />
                       Manage
@@ -669,28 +772,24 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
                       {playerTeams.map(team => (
                         <span 
                           key={team.id}
-                          className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full"
+                          className="text-xs bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 px-2 py-1 rounded-full"
                         >
                           {team.name}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-zinc-500">No team assignments</span>
+                    <div className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded-full inline-block">
+                      No team assignments
+                    </div>
                   )}
                 </div>
 
-                {/* Action Buttons */}
+                {/* Enhanced Action Buttons */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setSelectedPlayerId(player.id)}
-                    className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white text-sm px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <TrendingUp className="w-4 h-4" />
-                    View Profile
-                  </button>
-                  <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditingPlayer(player.id);
                       setEditForm({
                         name: player.name,
@@ -702,14 +801,18 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
                         profileImageUrl: player.profileImageUrl || ''
                       });
                     }}
-                    className="p-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg transition-colors"
+                    className="p-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg transition-all transform hover:scale-110 shadow-lg"
                     title="Edit Player"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeletePlayer(player.id)}
-                    className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePlayer(player.id);
+                    }}
+                    className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-all transform hover:scale-110 shadow-lg"
+                    title="Delete Player"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

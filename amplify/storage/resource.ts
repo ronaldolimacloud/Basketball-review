@@ -6,6 +6,9 @@ export const storage = defineStorage({
     'protected/player-images/*': [
       allow.authenticated.to(['read', 'write', 'delete']),
     ],
+    'protected/team-logos/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+    ],
     'protected/game-videos/*': [
       allow.authenticated.to(['read', 'write', 'delete']),
     ],
