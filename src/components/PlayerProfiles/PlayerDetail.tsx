@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock, Target } from 'lucide-react';
+import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { PlayerImage } from './PlayerImage';
@@ -12,7 +12,7 @@ interface PlayerDetailProps {
 
 export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, client }) => {
   const [gameStats, setGameStats] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     fetchGameStats();

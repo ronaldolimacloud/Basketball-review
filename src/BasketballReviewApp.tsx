@@ -1,67 +1,156 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio } from 'lucide-react';
+import { fetchUserAttributes } from 'aws-amplify/auth';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, User } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
 import { GameReview } from './components/GameReview/GameReview';
-import { PlayerProfiles } from './components/PlayerProfiles/PlayerProfiles';
+// import { PlayerProfiles } from './components/PlayerProfiles/PlayerProfiles';
 import { PlayersWithTeamAssignment } from './components/PlayerProfiles/PlayersWithTeamAssignment';
 import { MyTeams } from './components/MyTeams/MyTeams';
 import { GameHistory } from './components/GameHistory/GameHistory';
 import { LiveGames } from './components/LiveGames/LiveGames';
+import { PlayerDashboard } from './components/PlayerDashboard/PlayerDashboard';
 
 // Generate the Amplify Data client
 const client = generateClient<Schema>();
 
-type TabType = 'game' | 'players' | 'teams' | 'history' | 'live';
+type TabType = 'game' | 'players' | 'teams' | 'history' | 'live' | 'dashboard';
 
 const BasketballReviewApp = () => {
   const { user, signOut } = useAuthenticator();
   const [activeTab, setActiveTab] = useState<TabType>('players');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const tabs = [
-    {
-      id: 'players' as TabType,
-      label: 'Players',
-      icon: Users,
-      component: PlayersWithTeamAssignment,
-      description: 'Manage player profiles, photos, and team assignments'
-    },
-    {
-      id: 'teams' as TabType,
-      label: 'My Teams',
-      icon: Trophy,
-      component: MyTeams,
-      description: 'Create and manage your basketball teams'
-    },
-    {
-      id: 'game' as TabType,
-      label: 'Game Review',
-      icon: Play,
-      component: GameReview,
-      description: 'Live game tracking with video analysis'
-    },
-    {
-      id: 'live' as TabType,
-      label: 'Live Games',
-      icon: Radio,
-      component: LiveGames,
-      description: 'Follow live game feeds and play-by-play'
-    },
-    {
-      id: 'history' as TabType,
-      label: 'Game History',
-      icon: History,
-      component: GameHistory,
-      description: 'Review past games and statistics'
+  useEffect(() => {
+    checkUserRole();
+  }, [user]);
+
+  const checkUserRole = async () => {
+    try {
+      const attributes = await fetchUserAttributes();
+      const role = attributes['custom:role'];
+      
+      if (role) {
+        setUserRole(role);
+        // Set default tab based on role
+        if (role === 'Player') {
+          setActiveTab('dashboard');
+        } else {
+          setActiveTab('players');
+        }
+      } else {
+        // Check if user has player profile to determine role
+        try {
+          const playerResponse = await client.models.Player.list({
+            filter: { userId: { eq: user.userId } }
+          });
+          
+          if (playerResponse.data.length > 0) {
+            setUserRole('Player');
+            setActiveTab('dashboard');
+          } else {
+            setUserRole('Coach');
+            setActiveTab('players');
+          }
+        } catch (error) {
+          console.error('Error checking user role:', error);
+          // Default to Coach if we can't determine role
+          setUserRole('Coach');
+          setActiveTab('players');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      setUserRole('Coach'); // Default to Coach
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Define tabs based on user role
+  const getTabsForRole = (role: string) => {
+    const baseTabs = [
+      {
+        id: 'live' as TabType,
+        label: 'Live Games',
+        icon: Radio,
+        component: LiveGames,
+        description: 'Follow live game feeds and play-by-play',
+        roles: ['Coach', 'Player']
+      },
+      {
+        id: 'history' as TabType,
+        label: 'Game History',
+        icon: History,
+        component: GameHistory,
+        description: 'Review past games and statistics',
+        roles: ['Coach', 'Player']
+      }
+    ];
+
+    if (role === 'Coach') {
+      return [
+        {
+          id: 'players' as TabType,
+          label: 'Players',
+          icon: Users,
+          component: PlayersWithTeamAssignment,
+          description: 'Manage player profiles, photos, and team assignments',
+          roles: ['Coach']
+        },
+        {
+          id: 'teams' as TabType,
+          label: 'My Teams',
+          icon: Trophy,
+          component: MyTeams,
+          description: 'Create and manage your basketball teams',
+          roles: ['Coach']
+        },
+        {
+          id: 'game' as TabType,
+          label: 'Game Review',
+          icon: Play,
+          component: GameReview,
+          description: 'Live game tracking with video analysis',
+          roles: ['Coach']
+        },
+        ...baseTabs
+      ];
+    } else {
+      return [
+        {
+          id: 'dashboard' as TabType,
+          label: 'My Dashboard',
+          icon: User,
+          component: PlayerDashboard,
+          description: 'View your stats, teams, and recent games',
+          roles: ['Player']
+        },
+        ...baseTabs
+      ];
+    }
+  };
+
+  const tabs = userRole ? getTabsForRole(userRole) : [];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || PlayersWithTeamAssignment;
   const activeTabInfo = tabs.find(tab => tab.id === activeTab);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-900 text-white flex items-center justify-center">
+        <div className="animate-pulse text-center">
+          <Trophy className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+          <p className="text-zinc-400">Loading Basketball Pro...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-900 text-white flex">
@@ -166,7 +255,7 @@ const BasketballReviewApp = () => {
 
             <div className="flex items-center gap-3">
               <div className="text-sm text-zinc-400">
-                Welcome, {user?.signInDetails?.loginId}
+                Welcome, {user?.signInDetails?.loginId} ({userRole})
               </div>
               <button 
                 onClick={signOut}
@@ -182,7 +271,7 @@ const BasketballReviewApp = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <div className="h-full">
-            <ActiveComponent client={client} />
+            <ActiveComponent client={client} userId={user.userId} />
           </div>
         </main>
       </div>

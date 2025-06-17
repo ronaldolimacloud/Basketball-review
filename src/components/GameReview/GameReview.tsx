@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat, PeriodScore, StatType } from '../../types/game.types';
@@ -25,6 +25,7 @@ import { Play, Users, BarChart3, Edit3 } from 'lucide-react';
 
 interface GameReviewProps {
   client: ReturnType<typeof generateClient<Schema>>;
+  userId: string;
 }
 
 interface GamePlayer {
@@ -52,7 +53,7 @@ interface GamePlayer {
   startTime: number | null;
 }
 
-export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
+export const GameReview: React.FC<GameReviewProps> = ({ client, userId }) => {
   // Setup state
   const [isSetup, setIsSetup] = useState(true);
   const [teamName, setTeamName] = useState('');

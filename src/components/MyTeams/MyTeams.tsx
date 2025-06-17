@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
-import { Plus, Users, ChevronDown, ChevronRight, Settings, UserPlus, FolderPlus, Trophy } from 'lucide-react';
+import { Users, ChevronDown, ChevronRight, Settings, UserPlus, FolderPlus, Trophy } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { useTeamManagement, type Team, type PlayerWithTeam } from '../../hooks/useTeamManagement';
 import { TeamCreationModal } from '../TeamManagement/TeamCreationModal';
 import { TeamCard } from '../TeamManagement/TeamCard';
 import { PlayerTeamAssignmentModal } from '../TeamManagement/PlayerTeamAssignmentModal';
+import { TeamInvitationModal } from '../TeamManagement/TeamInvitationModal';
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface MyTeamsProps {
   client: ReturnType<typeof generateClient<Schema>>;
+  userId: string;
 }
 
-export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
-  const teamManagement = useTeamManagement(client);
+export const MyTeams: React.FC<MyTeamsProps> = ({ client, userId }) => {
+  const teamManagement = useTeamManagement(client, userId);
   
   // UI State
   const [showTeamCreationModal, setShowTeamCreationModal] = useState(false);
   const [showPlayerAssignmentModal, setShowPlayerAssignmentModal] = useState(false);
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
   const [selectedPlayerForAssignment, setSelectedPlayerForAssignment] = useState<PlayerWithTeam | null>(null);
+  const [selectedTeamForInvitation, setSelectedTeamForInvitation] = useState<Team | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
@@ -157,6 +161,10 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
               onSelect={teamManagement.setSelectedTeamId}
               onEdit={handleEditTeam}
               onDelete={handleDeleteTeam}
+              onInvite={(team) => {
+                setSelectedTeamForInvitation(team);
+                setShowInvitationModal(true);
+              }}
               isSelected={teamManagement.selectedTeamId === team.id}
             />
           ))}
@@ -282,6 +290,17 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
         teams={teamManagement.teams}
         onAssignPlayerToTeam={teamManagement.assignPlayerToTeam}
         onRemovePlayerFromTeam={teamManagement.removePlayerFromTeam}
+      />
+
+      <TeamInvitationModal
+        isOpen={showInvitationModal}
+        onClose={() => setShowInvitationModal(false)}
+        team={selectedTeamForInvitation}
+        onInviteCreated={(invitation) => {
+          console.log('Invitation created:', invitation);
+          // Optionally refresh teams or show success message
+        }}
+        client={client}
       />
     </div>
   );

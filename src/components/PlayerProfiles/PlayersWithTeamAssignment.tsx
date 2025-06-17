@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, User, TrendingUp, Settings, Users, Save, X, Camera, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, User, TrendingUp, Settings, Save, X, Camera, Upload } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
@@ -11,10 +11,11 @@ import { resizeProfileImage, validateImageFile, formatFileSize, getImageDimensio
 
 interface PlayersWithTeamAssignmentProps {
   client: ReturnType<typeof generateClient<Schema>>;
+  userId: string;
 }
 
-export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps> = ({ client }) => {
-  const teamManagement = useTeamManagement(client);
+export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps> = ({ client, userId }) => {
+  const teamManagement = useTeamManagement(client, userId);
   
   // Local player state
   const [players, setPlayers] = useState<any[]>([]);

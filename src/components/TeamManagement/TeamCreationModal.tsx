@@ -12,7 +12,7 @@ export const TeamCreationModal: React.FC<TeamCreationModalProps> = ({
   isOpen,
   onClose,
   onCreateTeam,
-  loading = false
+  loading: _ = false
 }) => {
   const [teamName, setTeamName] = useState('');
   const [description, setDescription] = useState('');

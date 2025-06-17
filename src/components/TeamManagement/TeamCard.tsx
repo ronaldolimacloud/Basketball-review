@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Edit3, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Calendar, Edit3, Trash2, MoreVertical, UserPlus } from 'lucide-react';
 import type { Team } from '../../hooks/useTeamManagement';
 
 interface TeamCardProps {
@@ -7,6 +7,7 @@ interface TeamCardProps {
   onSelect: (teamId: string) => void;
   onEdit: (team: Team) => void;
   onDelete: (teamId: string) => void;
+  onInvite?: (team: Team) => void;
   isSelected?: boolean;
 }
 
@@ -15,6 +16,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   onSelect,
   onEdit,
   onDelete,
+  onInvite,
   isSelected = false
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -34,6 +36,14 @@ export const TeamCard: React.FC<TeamCardProps> = ({
     setShowMenu(false);
     if (window.confirm(`Are you sure you want to delete "${team.name}"? This will remove all player associations.`)) {
       onDelete(team.id);
+    }
+  };
+
+  const handleInvite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    if (onInvite) {
+      onInvite(team);
     }
   };
 
@@ -71,14 +81,23 @@ export const TeamCard: React.FC<TeamCardProps> = ({
                 className="fixed inset-0 z-10" 
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-10 z-20 bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl min-w-[120px]">
+              <div className="absolute right-0 top-10 z-20 bg-zinc-800 border border-zinc-600 rounded-lg shadow-xl min-w-[140px]">
                 <button
                   onClick={handleEdit}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 rounded-t-lg transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors"
                 >
                   <Edit3 className="w-4 h-4" />
                   Edit
                 </button>
+                {onInvite && (
+                  <button
+                    onClick={handleInvite}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-yellow-400 hover:bg-zinc-700 transition-colors"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Invite Player
+                  </button>
+                )}
                 <button
                   onClick={handleDelete}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 rounded-b-lg transition-colors"

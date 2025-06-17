@@ -9,6 +9,7 @@ import { useTeamManagement } from '../../hooks/useTeamManagement';
 interface GameSetupFormProps {
   onSetupComplete: (teamId: string, teamName: string, opponent: string, format: GameFormat, players: any[]) => void;
   client: ReturnType<typeof generateClient<Schema>>;
+  userId: string;
 }
 
 interface GamePlayer {
@@ -36,14 +37,14 @@ interface GamePlayer {
   startTime: number | null;
 }
 
-export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, client }) => {
+export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, client, userId }) => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [opponentName, setOpponentName] = useState('');
   const [gameFormat, setGameFormat] = useState<GameFormat>('quarters');
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   
   // Use team management hook
-  const teamManagement = useTeamManagement(client);
+  const teamManagement = useTeamManagement(client, userId);
 
   // Get available players based on selected team
   const availablePlayers = selectedTeamId 

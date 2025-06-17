@@ -46,7 +46,7 @@ interface UseTeamManagementResult {
   getUnassignedPlayers: () => PlayerWithTeam[];
 }
 
-export const useTeamManagement = (client: ReturnType<typeof generateClient<Schema>>): UseTeamManagementResult => {
+export const useTeamManagement = (client: ReturnType<typeof generateClient<Schema>>, userId?: string): UseTeamManagementResult => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<PlayerWithTeam[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -141,7 +141,8 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
       const result = await client.models.Team.create({
         name: name.trim(),
         description: description?.trim(),
-        isActive: true
+        isActive: true,
+        coachId: userId || 'anonymous-user'
       });
 
       if (result.data) {

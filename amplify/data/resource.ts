@@ -3,6 +3,12 @@ import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 /*== BASKETBALL MANAGEMENT SCHEMA =======================================
 This schema defines the basketball management system with persistent players,
 games, and statistics tracking.
+
+AUTHORIZATION APPROACH:
+- Coaches have full CRUD access to all their data
+- Players have read access to data, with application-level filtering
+- Team invitations are readable by all authenticated users
+- Fine-grained access control is handled in the application layer
 =======================================================================*/
 const schema = a.schema({
   // Player Profile - Persistent player data
@@ -16,6 +22,11 @@ const schema = a.schema({
       profileImageUrl: a.string(), // URL to profile picture
       isActive: a.boolean().default(true),
       totalGamesPlayed: a.integer().default(0),
+      userId: a.string(), // Cognito user ID if player has account
+      // Protect owner field from reassignment
+      owner: a.string().authorization((allow) => [
+        allow.owner().to(['read'])
+      ]),
       // Career totals
       careerPoints: a.integer().default(0),
       careerAssists: a.integer().default(0),
@@ -35,7 +46,8 @@ const schema = a.schema({
       teamPlayers: a.hasMany('TeamPlayer', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the player can access it
+      allow.owner(),  // Coach who created the player profile
+      allow.groups(['Coach']).to(['read', 'create', 'update', 'delete']),
     ]),
 
   // Team Management
@@ -44,14 +56,41 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       isActive: a.boolean().default(true),
+      inviteCode: a.string(), // Unique code for players to join
+      inviteCodeExpiry: a.datetime(),
+      coachId: a.string().required(), // Owner/coach user ID
+      // Protect owner field from reassignment
+      owner: a.string().authorization((allow) => [
+        allow.owner().to(['read'])
+      ]),
       
       // Relationships
       teamPlayers: a.hasMany('TeamPlayer', 'teamId'),
       homeGames: a.hasMany('Game', 'homeTeamId'),
-      awayGames: a.hasMany('Game', 'awayTeamId'),
+      teamInvitations: a.hasMany('TeamInvitation', 'teamId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the team can access it
+      allow.owner(),  // Coach who created the team
+      allow.groups(['Player']).to(['read']),
+    ]),
+
+  // Team Invitation System
+  TeamInvitation: a
+    .model({
+      teamId: a.id().required(),
+      inviteCode: a.string().required(),
+      playerEmail: a.string(),
+      playerName: a.string(),
+      status: a.enum(['pending', 'accepted', 'declined', 'expired']),
+      expiresAt: a.datetime(),
+      invitedById: a.string().required(), // Coach who sent the invitation
+      
+      // Relationships
+      team: a.belongsTo('Team', 'teamId'),
+    })
+    .authorization((allow) => [
+      allow.groups(['Coach']).to(['read', 'create', 'update', 'delete']),
+      allow.authenticated().to(['read']),
     ]),
 
   // Team-Player Association (many-to-many)
@@ -61,13 +100,15 @@ const schema = a.schema({
       playerId: a.id().required(),
       isActive: a.boolean().default(true),
       dateJoined: a.datetime(),
+      role: a.enum(['player', 'captain', 'assistant']),
       
       // Relationships
       team: a.belongsTo('Team', 'teamId'),
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the association can access it
+      allow.groups(['Coach']).to(['read', 'create', 'update', 'delete']),
+      allow.groups(['Player']).to(['read']),
     ]),
 
   // Game Session
@@ -98,11 +139,11 @@ const schema = a.schema({
       
       // Relationships
       homeTeam: a.belongsTo('Team', 'homeTeamId'),
-      awayTeam: a.belongsTo('Team', 'awayTeamId'),
       gameStats: a.hasMany('GameStat', 'gameId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the game can access it
+      allow.groups(['Coach']).to(['read', 'create', 'update', 'delete']),
+      allow.groups(['Player']).to(['read']),
     ]),
 
   // Individual player stats for a specific game
@@ -135,7 +176,8 @@ const schema = a.schema({
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the game stat can access it
+      allow.groups(['Coach']).to(['read', 'create', 'update', 'delete']),
+      allow.groups(['Player']).to(['read']),
     ]),
 });
 
