@@ -8,11 +8,21 @@ import {
   User, 
   Calendar,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare,
+  Phone,
+  X
 } from 'lucide-react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateSimpleAccessCode } from '../../utils/playerAccessUtils';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
+import { 
+  sendSMS, 
+  createPlayerAccessMessage, 
+  isValidPhoneNumber,
+  type SMSResult 
+} from '../../utils/smsNotifications';
 
 interface PlayerAccessManagerProps {
   client: ReturnType<typeof generateClient<Schema>>;
@@ -23,6 +33,15 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
   const [loading, setLoading] = useState(true);
   const [showCodes, setShowCodes] = useState<Record<string, boolean>>({});
   const [copyFeedback, setCopyFeedback] = useState<Record<string, boolean>>({});
+  
+  // SMS functionality state
+  const [smsModal, setSmsModal] = useState<{ isOpen: boolean; player: any | null }>({ 
+    isOpen: false, 
+    player: null 
+  });
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [sendingSMS, setSendingSMS] = useState(false);
+  const [smsResults, setSmsResults] = useState<Record<string, SMSResult>>({});
 
   useEffect(() => {
     loadPlayers();
@@ -76,6 +95,63 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
     setShowCodes(prev => ({ ...prev, [playerId]: !prev[playerId] }));
   };
 
+  // SMS Functions
+  const openSmsModal = (player: any) => {
+    setSmsModal({ isOpen: true, player });
+    setPhoneNumber('');
+  };
+
+  const closeSmsModal = () => {
+    setSmsModal({ isOpen: false, player: null });
+    setPhoneNumber('');
+  };
+
+  const sendAccessCodeSMS = async () => {
+    if (!smsModal.player || !phoneNumber.trim()) {
+      alert('Please enter a phone number.');
+      return;
+    }
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      alert('Please enter a valid phone number. Format: (555) 123-4567 or +1-555-123-4567');
+      return;
+    }
+
+    setSendingSMS(true);
+    
+    try {
+      const message = createPlayerAccessMessage(
+        smsModal.player.name,
+        smsModal.player.accessCode,
+        `${window.location.origin}/player-portal`
+      );
+
+      const result = await sendSMS({
+        phoneNumber,
+        message,
+        playerName: smsModal.player.name
+      });
+
+      // Store the result for feedback
+      setSmsResults(prev => ({ 
+        ...prev, 
+        [smsModal.player.id]: result 
+      }));
+
+      if (result.success) {
+        alert(`✅ SMS sent successfully to ${smsModal.player.name}!\nMessage ID: ${result.messageId}`);
+        closeSmsModal();
+      } else {
+        alert(`❌ Failed to send SMS: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('SMS sending error:', error);
+      alert(`❌ Failed to send SMS: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSendingSMS(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -107,11 +183,29 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
           <AlertTriangle className="w-5 h-5 text-blue-400 mt-0.5" />
           <div>
             <h3 className="text-blue-200 font-medium mb-1">How Player Access Works</h3>
-            <p className="text-blue-300 text-sm leading-relaxed">
+            <p className="text-blue-300 text-sm leading-relaxed mb-3">
               Each player gets a unique access code to view their personal dashboard. Players can see their stats, 
-              assigned video clips, and coach feedback. Share these codes directly with your players via text, email, 
-              or print them out.
+              assigned video clips, and coach feedback. Players access their portal through a separate, public link 
+              that doesn't require your coach credentials.
             </p>
+            <div className="bg-blue-800/30 rounded-lg p-3 border border-blue-600/30">
+              <p className="text-blue-200 text-sm font-medium mb-1">Player Portal Link:</p>
+              <div className="flex items-center gap-2">
+                <code className="bg-blue-700/50 px-2 py-1 rounded text-blue-100 text-sm font-mono">
+                  {window.location.origin}/player-portal
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/player-portal`)}
+                  className="p-1 hover:bg-blue-600/30 rounded transition-colors"
+                  title="Copy player portal link"
+                >
+                  <Copy className="w-4 h-4 text-blue-400" />
+                </button>
+              </div>
+              <p className="text-blue-300 text-xs mt-1">
+                Share this link with players along with their access codes
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -133,16 +227,12 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
               <div className="flex items-center justify-between">
                 {/* Player Info */}
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-                    {player.profileImageUrl ? (
-                      <img 
-                        src={player.profileImageUrl} 
-                        alt={player.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-6 h-6 text-black" />
-                    )}
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full overflow-hidden flex items-center justify-center">
+                    <PlayerImage 
+                      profileImageUrl={player.profileImageUrl}
+                      className="w-full h-full rounded-full"
+                      alt={player.name}
+                    />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white">{player.name}</h3>
@@ -206,6 +296,13 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
                         >
                           <RefreshCw className="w-4 h-4 text-white" />
                         </button>
+                        <button
+                          onClick={() => openSmsModal(player)}
+                          className="p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                          title="Send SMS to player"
+                        >
+                          <MessageSquare className="w-4 h-4 text-white" />
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -230,12 +327,12 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
                     <div>
                       <p className="text-sm text-zinc-400">Share with player:</p>
                       <p className="text-xs text-zinc-500 mt-1">
-                        Direct them to the "Player Portal" tab and have them enter: {player.accessCode}
+                        Send them the player portal link with their access code
                       </p>
                     </div>
                     <button
                       onClick={() => copyToClipboard(
-                        `Your basketball portal access code is: ${player.accessCode}\n\nGo to the Player Portal tab and enter this code to view your stats, videos, and coach feedback.`,
+                        `Hi ${player.name}! 🏀\n\nAccess your basketball portal here:\n${window.location.origin}/player-portal\n\nYour access code: ${player.accessCode}\n\nView your stats, videos, and coach feedback anytime!`,
                         `${player.id}-message`
                       )}
                       className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 rounded text-sm transition-colors"
@@ -256,6 +353,103 @@ export const PlayerAccessManager: React.FC<PlayerAccessManagerProps> = ({ client
           ))
         )}
       </div>
+
+      {/* SMS Modal */}
+      {smsModal.isOpen && smsModal.player && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">
+                Send SMS to {smsModal.player.name}
+              </h3>
+              <button
+                onClick={closeSmsModal}
+                className="p-1 hover:bg-zinc-700 rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-zinc-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="(555) 123-4567 or +1-555-123-4567"
+                    className="w-full pl-10 pr-4 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 focus:border-blue-500 focus:outline-none"
+                    disabled={sendingSMS}
+                  />
+                </div>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Phone number will receive the access code and portal link
+                </p>
+              </div>
+
+              <div className="bg-zinc-700/50 rounded-lg p-3 border border-zinc-600">
+                <p className="text-sm text-zinc-300 mb-2">Preview Message:</p>
+                <div className="text-xs text-zinc-400 font-mono whitespace-pre-wrap">
+                  {smsModal.player.accessCode ? 
+                    createPlayerAccessMessage(
+                      smsModal.player.name,
+                      smsModal.player.accessCode,
+                      `${window.location.origin}/player-portal`
+                    ) : 
+                    'Please generate an access code first'
+                  }
+                </div>
+              </div>
+
+              {smsResults[smsModal.player.id] && (
+                <div className={`p-3 rounded-lg border ${
+                  smsResults[smsModal.player.id].success 
+                    ? 'bg-green-900/30 border-green-700/50 text-green-200'
+                    : 'bg-red-900/30 border-red-700/50 text-red-200'
+                }`}>
+                  <p className="text-sm">
+                    {smsResults[smsModal.player.id].success 
+                      ? `✅ SMS sent successfully! ID: ${smsResults[smsModal.player.id].messageId}`
+                      : `❌ Failed: ${smsResults[smsModal.player.id].error}`
+                    }
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={closeSmsModal}
+                  className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors"
+                  disabled={sendingSMS}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendAccessCodeSMS}
+                  disabled={sendingSMS || !phoneNumber.trim() || !smsModal.player.accessCode}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {sendingSMS ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4" />
+                      Send SMS
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

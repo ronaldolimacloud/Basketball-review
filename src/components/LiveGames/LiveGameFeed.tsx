@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Clock, Users, BarChart3, Trophy, Target } from 'lucide-react';
+import { ArrowLeft, BarChart3, Trophy, Target } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 
@@ -73,7 +73,7 @@ export const LiveGameFeed: React.FC<LiveGameFeedProps> = ({ game, onBack, client
        (gameStatsResult.data || []).forEach((stat, index) => {
          // Add points events
          if ((stat.points || 0) > 0) {
-           const pointsPerEvent = (stat.points || 0) / Math.max(1, (stat.fgMade || 0) + (stat.ftMade || 0));
+           // const pointsPerEvent = (stat.points || 0) / Math.max(1, (stat.fgMade || 0) + (stat.ftMade || 0));
            for (let i = 0; i < (stat.fgMade || 0); i++) {
             events.push({
               id: `${stat.id}-fg-${i}`,

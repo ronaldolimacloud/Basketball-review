@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Upload, Settings, Volume2, Maximize2,
-  Scissors, Save, X, Eye, Tag, MessageSquare
+  Scissors, Save, X, Eye, Tag, MessageSquare, Clock
 } from 'lucide-react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -48,10 +48,34 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
   const [clipEndTime, setClipEndTime] = useState<number | null>(null);
   const [showClipForm, setShowClipForm] = useState(false);
   const [, setClipMarkers] = useState<ClipMarker[]>([]);
+  const [existingClips, setExistingClips] = useState<any[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const playbackSpeeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+  // Load existing clips when gameId changes
+  useEffect(() => {
+    if (gameId) {
+      loadExistingClips();
+    }
+  }, [gameId]);
+
+  const loadExistingClips = async () => {
+    if (!gameId) return;
+    
+    try {
+      const result = await client.models.VideoClip.list({
+        filter: { gameId: { eq: gameId } }
+      });
+      
+      if (result.data) {
+        setExistingClips(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading existing clips:', error);
+    }
+  };
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -160,10 +184,24 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
     setShowClipForm(false);
   };
 
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+
   const saveClip = async (clipData: ClipMarker) => {
     if (!gameId || clipStartTime === null || clipEndTime === null) return;
 
+    setSaving(true);
+    setSaveStatus('saving');
+
     try {
+      console.log('🎬 Creating video clip:', {
+        gameId,
+        title: clipData.title,
+        startTime: clipStartTime,
+        endTime: clipEndTime,
+        duration: clipEndTime - clipStartTime
+      });
+
       const newClip = await client.models.VideoClip.create({
         gameId,
         title: clipData.title,
@@ -181,14 +219,27 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
       });
 
       if (newClip.data) {
+        console.log('✅ Video clip created successfully:', newClip.data);
         setClipMarkers(prev => [...prev, clipData]);
+        setExistingClips(prev => [...prev, newClip.data]);
         onClipCreated?.(newClip.data);
-        setShowClipForm(false);
-        setClipStartTime(null);
-        setClipEndTime(null);
+        setSaveStatus('success');
+        
+        // Show success message for 2 seconds then close
+        setTimeout(() => {
+          setShowClipForm(false);
+          setClipStartTime(null);
+          setClipEndTime(null);
+          setSaveStatus('idle');
+        }, 2000);
       }
     } catch (error) {
-      console.error('Error creating clip:', error);
+      console.error('❌ Error creating clip:', error);
+      setSaveStatus('error');
+      // Reset error status after 3 seconds
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -200,6 +251,68 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
     }
     return () => clearTimeout(timeout);
   }, [showControls, isPlaying]);
+
+  // Enhanced keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in a form field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          togglePlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame-by-frame backward (0.1 seconds)
+            if (videoRef.current) {
+              videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 0.1);
+            }
+          } else {
+            skipBackward();
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame-by-frame forward (0.1 seconds)
+            if (videoRef.current) {
+              videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 0.1);
+            }
+          } else {
+            skipForward();
+          }
+          break;
+        case 'i':
+        case 'I':
+          e.preventDefault();
+          if (!isCreatingClip) {
+            startClipSelection();
+          }
+          break;
+        case 'o':
+        case 'O':
+          e.preventDefault();
+          if (isCreatingClip && clipStartTime !== null) {
+            endClipSelection();
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (isCreatingClip) {
+            cancelClipSelection();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isCreatingClip, clipStartTime, duration]);
 
   return (
     <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-lg p-6 border border-zinc-700 shadow-2xl">
@@ -247,23 +360,97 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
 
             {/* Video Controls Overlay */}
             <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 rounded-b-lg transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-              {/* Progress Bar */}
+              {/* Enhanced Progress Bar with Clip Markers */}
               <div className="mb-3">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={duration ? (currentTime / duration) * 100 : 0}
-                  onChange={handleSeek}
-                  className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider hover:h-2 transition-all"
-                  style={{
-                    background: `linear-gradient(to right, #eab308 0%, #eab308 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 100%)`
-                  }}
-                />
-                <div className="flex justify-between text-xs text-zinc-300 mt-1">
+                <div className="relative">
+                  {/* Background timeline */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={duration ? (currentTime / duration) * 100 : 0}
+                    onChange={handleSeek}
+                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider hover:h-3 transition-all"
+                    style={{
+                      background: `linear-gradient(to right, #eab308 0%, #eab308 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 ${duration ? (currentTime / duration) * 100 : 0}%, #374151 100%)`
+                    }}
+                  />
+                  
+                  {/* Existing clip markers */}
+                  {duration > 0 && existingClips.map((clip, index) => {
+                    const startPercent = (clip.startTime / duration) * 100;
+                    const endPercent = (clip.endTime / duration) * 100;
+                    const width = endPercent - startPercent;
+                    
+                    return (
+                      <div
+                        key={clip.id || index}
+                        className="absolute top-0 h-2 bg-emerald-500/60 rounded-sm pointer-events-none border border-emerald-400/40"
+                        style={{
+                          left: `${startPercent}%`,
+                          width: `${width}%`
+                        }}
+                        title={clip.title || 'Existing clip'}
+                      />
+                    );
+                  })}
+                  
+                  {/* Current clip selection overlay */}
+                  {clipStartTime !== null && duration > 0 && (
+                    <div
+                      className="absolute top-0 h-2 bg-red-500/80 rounded-sm pointer-events-none border border-red-400"
+                      style={{
+                        left: `${(clipStartTime / duration) * 100}%`,
+                        width: `${clipEndTime ? ((clipEndTime - clipStartTime) / duration) * 100 : ((currentTime - clipStartTime) / duration) * 100}%`
+                      }}
+                    />
+                  )}
+                  
+                  {/* Time markers */}
+                  {clipStartTime !== null && (
+                    <div
+                      className="absolute top-3 transform -translate-x-1/2 text-xs text-red-400 font-medium"
+                      style={{ left: `${(clipStartTime / duration) * 100}%` }}
+                    >
+                      ▼
+                    </div>
+                  )}
+                  
+                  {clipEndTime !== null && (
+                    <div
+                      className="absolute top-3 transform -translate-x-1/2 text-xs text-red-400 font-medium"
+                      style={{ left: `${(clipEndTime / duration) * 100}%` }}
+                    >
+                      ▼
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-between text-xs text-zinc-300 mt-2">
                   <span className="font-medium">{formatTime(currentTime)}</span>
+                  {clipStartTime !== null && (
+                    <span className="text-red-400 font-medium">
+                      Clip: {formatTime(clipStartTime)} - {formatTime(clipEndTime || currentTime)}
+                    </span>
+                  )}
                   <span className="font-medium">{formatTime(duration)}</span>
                 </div>
+                
+                {/* Clip markers legend */}
+                {existingClips.length > 0 && (
+                  <div className="flex items-center gap-4 mt-2 text-xs">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-1.5 bg-emerald-500/60 rounded-sm border border-emerald-400/40"></div>
+                      <span className="text-zinc-400">Existing clips ({existingClips.length})</span>
+                    </div>
+                    {clipStartTime !== null && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-1.5 bg-red-500/80 rounded-sm border border-red-400"></div>
+                        <span className="text-zinc-400">New clip</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               {/* Control Buttons */}
@@ -392,13 +579,48 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
             )}
           </div>
 
-          {/* Clip Creation Form */}
+          {/* Keyboard Shortcuts Guide */}
+          <div className="mt-4 bg-zinc-800/30 rounded-lg p-4 border border-zinc-600">
+            <h4 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
+              ⌨️ Keyboard Shortcuts
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-zinc-400">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">Space</kbd>
+                <span>Play/Pause</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">I</kbd>
+                <span>Mark In (Start clip)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">O</kbd>
+                <span>Mark Out (End clip)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">Esc</kbd>
+                <span>Cancel clip</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">←/→</kbd>
+                <span>Skip 10s</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-zinc-700 rounded text-zinc-300">Shift+←/→</kbd>
+                <span>Frame by frame</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Clip Creation Form */}
           {showClipForm && clipStartTime !== null && clipEndTime !== null && (
             <ClipCreationForm
               startTime={clipStartTime}
               endTime={clipEndTime}
               onSave={saveClip}
               onCancel={cancelClipSelection}
+              saving={saving}
+              saveStatus={saveStatus}
             />
           )}
         </div>
@@ -407,19 +629,23 @@ export const VideoClipEditor: React.FC<VideoClipEditorProps> = ({
   );
 };
 
-// Clip Creation Form Component
+// Enhanced Clip Creation Form Component
 interface ClipCreationFormProps {
   startTime: number;
   endTime: number;
   onSave: (clipData: ClipMarker) => void;
   onCancel: () => void;
+  saving?: boolean;
+  saveStatus?: 'idle' | 'saving' | 'success' | 'error';
 }
 
 const ClipCreationForm: React.FC<ClipCreationFormProps> = ({
   startTime,
   endTime,
   onSave,
-  onCancel
+  onCancel,
+  saving = false,
+  saveStatus = 'idle'
 }) => {
   const [formData, setFormData] = useState<ClipMarker>({
     startTime,
@@ -449,19 +675,56 @@ const ClipCreationForm: React.FC<ClipCreationFormProps> = ({
   };
 
   return (
-    <div className="mt-4 bg-zinc-800 rounded-lg p-6 border border-zinc-600">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
-          <Scissors className="w-5 h-5" />
-          Create Video Clip ({formatTime(startTime)} - {formatTime(endTime)})
-        </h3>
+    <div className="mt-6 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-600 shadow-2xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-xl font-semibold text-yellow-400 flex items-center gap-2 mb-2">
+            <Scissors className="w-6 h-6" />
+            Create Video Clip
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <Clock className="w-4 h-4" />
+            <span>{formatTime(startTime)} - {formatTime(endTime)}</span>
+            <span className="text-zinc-600">•</span>
+            <span>{formatTime(endTime - startTime)} duration</span>
+          </div>
+        </div>
         <button
           onClick={onCancel}
-          className="text-zinc-400 hover:text-white transition-colors"
+          disabled={saving}
+          className="text-zinc-400 hover:text-white transition-colors p-2 hover:bg-zinc-700 rounded-lg disabled:opacity-50"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Status Messages */}
+      {saveStatus === 'saving' && (
+        <div className="mb-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-blue-400">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+            <span className="text-sm font-medium">Saving video clip...</span>
+          </div>
+        </div>
+      )}
+
+      {saveStatus === 'success' && (
+        <div className="mb-4 bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-green-400">
+            <div className="w-4 h-4 bg-green-400 rounded-full"></div>
+            <span className="text-sm font-medium">✅ Video clip saved successfully!</span>
+          </div>
+        </div>
+      )}
+
+      {saveStatus === 'error' && (
+        <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-red-400">
+            <div className="w-4 h-4 bg-red-400 rounded-full"></div>
+            <span className="text-sm font-medium">❌ Failed to save video clip. Please try again.</span>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -588,21 +851,32 @@ const ClipCreationForm: React.FC<ClipCreationFormProps> = ({
           />
         </div>
 
-        <div className="flex gap-3 pt-4">
+        <div className="flex gap-3 pt-6">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-lg transition-colors text-zinc-300"
+            disabled={saving}
+            className="flex-1 px-6 py-3 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-500 rounded-lg transition-colors text-zinc-300 font-medium"
           >
             Cancel
           </button>
           
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors text-white font-medium flex items-center justify-center gap-2"
+            disabled={saving || !formData.title.trim()}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:from-zinc-600 disabled:to-zinc-700 rounded-lg transition-all text-white font-medium flex items-center justify-center gap-2 transform hover:scale-105 shadow-lg disabled:transform-none disabled:shadow-none"
           >
-            <Save className="w-4 h-4" />
-            Save Clip
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Clip
+              </>
+            )}
           </button>
         </div>
       </form>

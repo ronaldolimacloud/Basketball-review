@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface PlayerDashboardProps {
   player: any;
@@ -158,12 +159,12 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, onLogo
       <header className="bg-gradient-to-r from-zinc-900 to-zinc-800 border-b border-zinc-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-              {player.profileImageUrl ? (
-                <img src={player.profileImageUrl} alt={player.name} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <User className="w-6 h-6 text-black" />
-              )}
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full overflow-hidden flex items-center justify-center">
+              <PlayerImage 
+                profileImageUrl={player.profileImageUrl}
+                className="w-full h-full rounded-full"
+                alt={player.name}
+              />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">{player.name}</h1>

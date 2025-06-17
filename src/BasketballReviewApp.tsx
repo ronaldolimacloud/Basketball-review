@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, UserCheck, Key } from 'lucide-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, UserCheck, Key, Brain } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
@@ -10,13 +10,13 @@ import { PlayersWithTeamAssignment } from './components/PlayerProfiles/PlayersWi
 import { MyTeams } from './components/MyTeams/MyTeams';
 import { GameHistory } from './components/GameHistory/GameHistory';
 import { LiveGames } from './components/LiveGames/LiveGames';
-import { PlayerPortal } from './components/PlayerPortal/PlayerPortal';
 import { PlayerAccessManager } from './components/PlayerManagement/PlayerAccessManager';
+import { AnalyticsDashboard } from './components/Analytics/AnalyticsDashboard';
 
 // Generate the Amplify Data client
 const client = generateClient<Schema>();
 
-type TabType = 'game' | 'players' | 'teams' | 'history' | 'live' | 'portal' | 'access';
+type TabType = 'game' | 'players' | 'teams' | 'history' | 'live' | 'access' | 'analytics';
 
 const BasketballReviewApp = () => {
   const { user, signOut } = useAuthenticator();
@@ -60,18 +60,18 @@ const BasketballReviewApp = () => {
       description: 'Review past games and statistics'
     },
     {
-      id: 'portal' as TabType,
-      label: 'Player Portal',
-      icon: UserCheck,
-      component: PlayerPortal,
-      description: 'Player access to personal stats and videos'
-    },
-    {
       id: 'access' as TabType,
       label: 'Access Management',
       icon: Key,
       component: PlayerAccessManager,
       description: 'Manage player portal access codes'
+    },
+    {
+      id: 'analytics' as TabType,
+      label: 'AI Analytics',
+      icon: Brain,
+      component: AnalyticsDashboard,
+      description: 'AI-powered performance insights and chat'
     }
   ];
 

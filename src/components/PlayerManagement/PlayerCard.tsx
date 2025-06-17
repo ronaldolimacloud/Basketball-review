@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Edit2, Check, X, User } from 'lucide-react';
+import { Edit2, Check, X } from 'lucide-react';
 import type { Player } from '../../types/game.types';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface PlayerCardProps {
   player: Player;
@@ -54,29 +55,12 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           {/* Profile Picture */}
-          <div className="w-8 h-8 rounded-full bg-zinc-700 border border-zinc-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-            {player.profileImageUrl ? (
-              <img 
-                src={player.profileImageUrl} 
-                alt={player.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/default-player.png';
-                }}
-              />
-            ) : (
-              <img 
-                src="/default-player.png" 
-                alt="Default player"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (nextElement) nextElement.style.display = 'block';
-                }}
-              />
-            )}
-            <User className="w-4 h-4 text-zinc-500 hidden" />
+          <div className="w-8 h-8 rounded-full bg-zinc-700 border border-zinc-600 overflow-hidden flex items-center justify-center flex-shrink-0">
+            <PlayerImage 
+              profileImageUrl={player.profileImageUrl}
+              className="w-full h-full rounded-full"
+              alt={player.name}
+            />
           </div>
           {isEditing ? (
             <div className="flex items-center gap-2">

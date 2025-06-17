@@ -436,7 +436,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
               </span>
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                Active Players: {players.filter(p => p.isActive).length}
+                With Profile Photos: {players.filter(p => p.profileImageUrl).length}
               </span>
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-purple-400 rounded-full"></div>

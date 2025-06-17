@@ -88,7 +88,7 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
               </span>
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                Total Teams: {teamManagement.teams.length}
+                Total Members: {teamManagement.players.reduce((sum, player) => sum + player.teams.length, 0)}
               </span>
             </div>
           </div>

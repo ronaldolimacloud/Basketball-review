@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock, Target } from 'lucide-react';
+import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock, Brain, Star, Activity } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { PlayerImage } from './PlayerImage';
+import { BedrockService } from '../../services/bedrockService';
 
 interface PlayerDetailProps {
   player: any; // Player data passed from parent
@@ -12,7 +13,10 @@ interface PlayerDetailProps {
 
 export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, client }) => {
   const [gameStats, setGameStats] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
+  const [aiInsights, setAiInsights] = useState<string>('');
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const bedrockService = BedrockService.getInstance();
 
   useEffect(() => {
     fetchGameStats();
@@ -32,6 +36,22 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
       console.error('Error fetching game stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generatePlayerInsights = async () => {
+    setLoadingInsights(true);
+    try {
+      const insights = await bedrockService.analyzePlayerPerformance(
+        player.id, 
+        "Provide a comprehensive analysis of this player's strengths, areas for improvement, and development recommendations."
+      );
+      setAiInsights(insights);
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      setAiInsights('Unable to generate insights at this time. Please try again later.');
+    } finally {
+      setLoadingInsights(false);
     }
   };
 
@@ -87,88 +107,156 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="p-3 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-700 hover:from-zinc-700 hover:to-zinc-600 transition-all transform hover:scale-105 shadow-lg"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Trophy className="w-8 h-8 text-yellow-400" />
+              Player Profile
+            </h1>
+            <p className="text-zinc-400 mt-1">Detailed performance analysis and insights</p>
+          </div>
+        </div>
+        
+        {/* AI Insights Button */}
         <button
-          onClick={onBack}
-          className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+          onClick={generatePlayerInsights}
+          disabled={loadingInsights}
+          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 disabled:from-zinc-600 disabled:to-zinc-700 px-6 py-3 rounded-xl font-semibold text-black disabled:text-zinc-400 transition-all transform hover:scale-105 shadow-lg flex items-center gap-2"
         >
-          <ArrowLeft className="w-5 h-5" />
+          {loadingInsights ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <Brain className="w-5 h-5" />
+              AI Insights
+            </>
+          )}
         </button>
-        <h1 className="text-2xl font-bold text-white">Player Details</h1>
       </div>
 
-      {/* Player Info Card */}
-      <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-8 border border-zinc-700">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Player Image */}
-          <div className="flex-shrink-0">
-            <div className="w-48 h-48 mx-auto md:mx-0 rounded-full overflow-hidden border-4 border-zinc-600 shadow-lg">
-              <PlayerImage
-                profileImageUrl={player.profileImageUrl}
-                className="w-full h-full object-cover"
-                alt={player.name}
-              />
+      {/* Enhanced Player Info Card */}
+      <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-xl p-8 border border-zinc-700 shadow-2xl">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Player Image Section */}
+          <div className="flex-shrink-0 text-center lg:text-left">
+            <div className="relative inline-block">
+              <div className="w-56 h-56 mx-auto lg:mx-0 rounded-2xl overflow-hidden border-4 border-gradient-to-r from-yellow-500 to-yellow-600 shadow-2xl">
+                <PlayerImage
+                  profileImageUrl={player.profileImageUrl}
+                  className="w-full h-full object-cover"
+                  alt={player.name}
+                />
+              </div>
+              {/* Status Indicator */}
+              <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-full border-4 border-zinc-900 ${player.isActive ? 'bg-green-400' : 'bg-red-400'}`}></div>
             </div>
           </div>
 
-          {/* Player Info */}
-          <div className="flex-1 space-y-4">
+          {/* Player Info Section */}
+          <div className="flex-1 space-y-6">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-2">{player.name}</h2>
-              <div className="flex flex-wrap gap-3">
+              <h2 className="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+                {player.name}
+              </h2>
+              <div className="flex flex-wrap gap-3 mb-4">
                 {player.position && (
-                  <span className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded-lg text-sm font-medium">
+                  <span className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 px-4 py-2 rounded-lg text-sm font-medium">
+                    <Star className="w-4 h-4 inline mr-1" />
                     {player.position}
                   </span>
                 )}
                 {player.jerseyNumber && (
-                  <span className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-lg text-sm font-medium">
+                  <span className="bg-gradient-to-r from-zinc-800 to-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-medium">
                     #{player.jerseyNumber}
                   </span>
                 )}
+                <span className={`px-4 py-2 rounded-lg text-sm font-medium ${player.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  <Activity className="w-4 h-4 inline mr-1" />
+                  {player.isActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
             </div>
 
-            {/* Physical Stats */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            {/* Enhanced Physical Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {player.height && (
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-400">Height:</span>
-                  <span className="font-medium text-white">{player.height}</span>
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-white">{player.height}</div>
+                  <div className="text-xs text-zinc-400">Height</div>
                 </div>
               )}
               {player.weight && (
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-400">Weight:</span>
-                  <span className="font-medium text-white">{player.weight}</span>
+                <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-white">{player.weight}</div>
+                  <div className="text-xs text-zinc-400">Weight</div>
                 </div>
               )}
+              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-yellow-400">{player.totalGamesPlayed || 0}</div>
+                <div className="text-xs text-zinc-400">Games</div>
+              </div>
+              <div className="bg-zinc-800/50 rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-emerald-400">
+                  {gameStats.length > 0 ? ((player.careerPoints || 0) / gameStats.length).toFixed(1) : '0.0'}
+                </div>
+                <div className="text-xs text-zinc-400">Avg PPG</div>
+              </div>
             </div>
 
-            {/* Career Totals */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-zinc-700">
-              <div className="text-center">
-                <Trophy className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-                <div className="text-2xl font-bold text-white">{player.totalGamesPlayed || 0}</div>
-                <div className="text-xs text-zinc-400">Games Played</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-400">{player.careerPoints || 0}</div>
-                <div className="text-xs text-zinc-400">Total Points</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{player.careerAssists || 0}</div>
-                <div className="text-xs text-zinc-400">Total Assists</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">{player.careerRebounds || 0}</div>
-                <div className="text-xs text-zinc-400">Total Rebounds</div>
+            {/* Enhanced Career Totals */}
+            <div className="bg-zinc-800/30 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                Career Statistics
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-emerald-400 mb-1">{player.careerPoints || 0}</div>
+                  <div className="text-sm text-zinc-400">Total Points</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-400 mb-1">{player.careerAssists || 0}</div>
+                  <div className="text-sm text-zinc-400">Total Assists</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-400 mb-1">{player.careerRebounds || 0}</div>
+                  <div className="text-sm text-zinc-400">Total Rebounds</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-orange-400 mb-1">{player.careerSteals || 0}</div>
+                  <div className="text-sm text-zinc-400">Total Steals</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* AI Insights Section */}
+      {aiInsights && (
+        <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border border-yellow-500/20 rounded-xl p-6">
+          <h3 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
+            <Brain className="w-6 h-6" />
+            AI Performance Insights
+          </h3>
+          <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-700">
+            <div className="whitespace-pre-wrap text-zinc-300 leading-relaxed">
+              {aiInsights}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Season Averages */}
       {averages && (

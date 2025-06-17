@@ -26,7 +26,7 @@ const PlayerImageComponent: React.FC<PlayerImageProps> = ({ profileImageUrl, cla
     <StorageImage
       path={profileImageUrl} // <-- Just pass the full path directly!
       alt={alt}
-      className={className}
+      className={`${className} object-cover`}
       validateObjectExistence={true}
       loadingElement={
         <div className={`${className} animate-pulse bg-zinc-700/50 flex items-center justify-center`}>
