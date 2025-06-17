@@ -12,6 +12,12 @@ export const storage = defineStorage({
     'protected/game-videos/*': [
       allow.authenticated.to(['read', 'write', 'delete']),
     ],
+    'protected/processed-videos/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+    ],
+    'protected/video-thumbnails/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+    ],
     'protected/video-clips/*': [
       allow.authenticated.to(['read', 'write', 'delete']),
     ],

@@ -1,0 +1,19 @@
+{
+  "name": "video-completion-handler",
+  "version": "1.0.0",
+  "description": "Lambda function for handling MediaConvert job completion events",
+  "main": "handler.js",
+  "scripts": {
+    "build": "tsc && esbuild handler.ts --bundle --platform=node --target=node18 --outfile=dist/handler.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.0.0"
+  }
+}

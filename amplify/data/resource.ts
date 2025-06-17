@@ -17,6 +17,11 @@ const schema = a.schema({
       isActive: a.boolean().default(true),
       totalGamesPlayed: a.integer().default(0),
       
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this player - read-only after creation
+      
       // Player portal access
       accessCode: a.string(), // Unique code for player to access their portal
       lastAccessDate: a.datetime(),
@@ -45,7 +50,8 @@ const schema = a.schema({
       playerGoals: a.hasMany('PlayerGoal', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the player can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their players
+      allow.publicApiKey().to(['read']), // Allow public read for player portal
     ]),
 
   // Team Management
@@ -56,13 +62,18 @@ const schema = a.schema({
       logoUrl: a.string(), // URL to team logo
       isActive: a.boolean().default(true),
       
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this team - read-only after creation
+      
       // Relationships
       teamPlayers: a.hasMany('TeamPlayer', 'teamId'),
       homeGames: a.hasMany('Game', 'homeTeamId'),
       awayGames: a.hasMany('Game', 'awayTeamId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the team can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their teams
     ]),
 
   // Team-Player Association (many-to-many)
@@ -73,12 +84,17 @@ const schema = a.schema({
       isActive: a.boolean().default(true),
       dateJoined: a.datetime(),
       
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this association - read-only after creation
+      
       // Relationships
       team: a.belongsTo('Team', 'teamId'),
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the association can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their associations
     ]),
 
   // Game Session
@@ -90,6 +106,11 @@ const schema = a.schema({
       awayTeamName: a.string().required(),
       gameFormat: a.enum(['quarters', 'halves']),
       gameDate: a.datetime(),
+      
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this game - read-only after creation
       
       // Final scores
       homeTeamScore: a.integer().default(0),
@@ -106,6 +127,10 @@ const schema = a.schema({
       // Video information
       videoFileName: a.string(),
       videoUrl: a.string(),
+      videoProcessingStatus: a.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']),
+      mediaConvertJobId: a.string(),
+      processedVideoUrls: a.json(), // URLs for different quality versions
+      thumbnailUrls: a.json(), // Array of thumbnail URLs
       
       // Relationships
       homeTeam: a.belongsTo('Team', 'homeTeamId'),
@@ -114,7 +139,7 @@ const schema = a.schema({
       videoClips: a.hasMany('VideoClip', 'gameId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the game can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their games
     ]),
 
   // Individual player stats for a specific game
@@ -122,6 +147,11 @@ const schema = a.schema({
     .model({
       gameId: a.id().required(),
       playerId: a.id().required(),
+      
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this stat - read-only after creation
       
       // Game-specific stats
       points: a.integer().default(0),
@@ -147,7 +177,8 @@ const schema = a.schema({
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the game stat can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their game stats
+      allow.publicApiKey().to(['read']), // Allow public read for player portal
     ]),
 
   // Video Clip Management
@@ -156,6 +187,11 @@ const schema = a.schema({
       gameId: a.id().required(),
       title: a.string().required(),
       description: a.string(),
+      
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who manages this clip - read-only after creation
       
       // Video timing
       startTime: a.float().required(), // Start time in seconds
@@ -186,7 +222,8 @@ const schema = a.schema({
       clipFeedbacks: a.hasMany('ClipFeedback', 'clipId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the clip can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their clips
+      allow.publicApiKey().to(['read']), // Allow public read for player portal
     ]),
 
   // Coach feedback on specific clips
@@ -194,6 +231,11 @@ const schema = a.schema({
     .model({
       clipId: a.id().required(),
       playerId: a.id().required(),
+      
+      // Explicit owner field for the coach
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who created this feedback - read-only after creation
       
       // Feedback content
       feedbackText: a.string().required(),
@@ -209,14 +251,17 @@ const schema = a.schema({
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the feedback can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access their feedback
+      allow.publicApiKey().to(['read']), // Allow public read for player portal
     ]),
 
   // Player Goals and Progress Tracking
   PlayerGoal: a
     .model({
       playerId: a.id().required(),
-      coachId: a.id(), // ID of the coach who set the goal
+      coachId: a.string().authorization(rules => [
+        rules.ownerDefinedIn('coachId').to(['read'])
+      ]), // ID of the coach who set the goal - read-only after creation
       
       // Goal details
       title: a.string().required(),
@@ -236,7 +281,8 @@ const schema = a.schema({
       player: a.belongsTo('Player', 'playerId'),
     })
     .authorization((allow) => [
-      allow.owner(),  // Only the user who created the goal can access it
+      allow.ownerDefinedIn('coachId'),  // Coach can access goals they created
+      allow.publicApiKey().to(['read']), // Allow public read for player portal
     ]),
 });
 
@@ -246,7 +292,7 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
-    // Keep apiKey for public data if needed, but not as default
+    // API key for player portal access (guest access)
     apiKeyAuthorizationMode: {
       expiresInDays: 30,
     },

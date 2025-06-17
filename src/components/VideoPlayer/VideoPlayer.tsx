@@ -3,9 +3,21 @@ import { Play, Pause, SkipBack, SkipForward, Upload, Settings, Volume2, Maximize
 
 interface VideoPlayerProps {
   onTimeUpdate?: (currentTime: number) => void;
+  videoSources?: {
+    original?: string;
+    '1080p'?: string;
+    '720p'?: string;
+  };
+  thumbnails?: string[];
+  processingStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
+  onTimeUpdate, 
+  videoSources, 
+  thumbnails, 
+  processingStatus 
+}) => {
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -14,9 +26,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
   const [volume, setVolume] = useState(1);
   const [showControls, setShowControls] = useState(true);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<'720p' | '1080p' | 'original'>('1080p');
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const playbackSpeeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+  // Set video source based on available processed videos
+  useEffect(() => {
+    if (videoSources && Object.keys(videoSources).length > 0) {
+      // Priority: 1080p > 720p > original
+      if (videoSources['1080p'] && selectedQuality === '1080p') {
+        setVideoSrc(videoSources['1080p']);
+      } else if (videoSources['720p'] && selectedQuality === '720p') {
+        setVideoSrc(videoSources['720p']);
+      } else if (videoSources.original && selectedQuality === 'original') {
+        setVideoSrc(videoSources.original);
+      } else {
+        // Fallback to best available quality
+        setVideoSrc(videoSources['1080p'] || videoSources['720p'] || videoSources.original || null);
+      }
+    }
+  }, [videoSources, selectedQuality]);
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,8 +144,55 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
     return () => clearTimeout(timeout);
   }, [showControls, isPlaying]);
 
+  const getAvailableQualities = () => {
+    if (!videoSources) return [];
+    const qualities = [];
+    if (videoSources['1080p']) qualities.push('1080p');
+    if (videoSources['720p']) qualities.push('720p'); 
+    if (videoSources.original) qualities.push('original');
+    return qualities;
+  };
+
+  const changeQuality = (quality: '720p' | '1080p' | 'original') => {
+    const currentTime = videoRef.current?.currentTime || 0;
+    setSelectedQuality(quality);
+    setShowQualityMenu(false);
+    
+    // Resume from same time after quality change
+    setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = currentTime;
+      }
+    }, 100);
+  };
+
+  // Processing status component
+  const ProcessingStatus = () => {
+    if (!processingStatus || processingStatus === 'COMPLETED') return null;
+    
+    const statusConfig = {
+      PENDING: { color: 'bg-yellow-500', text: 'Video queued for processing...', icon: '⏳' },
+      PROCESSING: { color: 'bg-blue-500', text: 'Processing video...', icon: '🔄' },
+      FAILED: { color: 'bg-red-500', text: 'Video processing failed', icon: '❌' }
+    };
+    
+    const config = statusConfig[processingStatus];
+    
+    return (
+      <div className={`${config.color} text-white px-4 py-2 rounded-lg mb-4 flex items-center gap-2`}>
+        <span>{config.icon}</span>
+        <span className="text-sm font-medium">{config.text}</span>
+        {processingStatus === 'PROCESSING' && (
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-lg p-6 border border-zinc-700 shadow-2xl">
+      <ProcessingStatus />
+      
       {!videoSrc ? (
         <div className="border-2 border-dashed border-zinc-600 rounded-xl p-12 text-center bg-gradient-to-b from-zinc-800 to-zinc-900 hover:border-yellow-500 transition-colors">
           <Upload className="w-16 h-16 mx-auto mb-6 text-zinc-400" />
@@ -213,6 +291,37 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ onTimeUpdate }) => {
                   />
                 </div>
                 
+                {/* Quality Selector */}
+                {getAvailableQualities().length > 1 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowQualityMenu(!showQualityMenu)}
+                      className="bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1.5 rounded-lg text-white text-xs font-medium transition-all backdrop-blur-sm"
+                      title="Video quality"
+                    >
+                      {selectedQuality === 'original' ? 'Original' : selectedQuality}
+                    </button>
+                    
+                    {showQualityMenu && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-zinc-800 rounded-lg shadow-xl border border-zinc-600 overflow-hidden">
+                        {getAvailableQualities().map(quality => (
+                          <button
+                            key={quality}
+                            onClick={() => changeQuality(quality as '720p' | '1080p' | 'original')}
+                            className={`block w-full px-3 py-1.5 text-left text-xs transition-colors ${
+                              quality === selectedQuality 
+                                ? 'bg-yellow-500 text-black font-semibold' 
+                                : 'text-white hover:bg-zinc-700'
+                            }`}
+                          >
+                            {quality === 'original' ? 'Original' : quality}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Playback Speed */}
                 <div className="relative">
                   <button
