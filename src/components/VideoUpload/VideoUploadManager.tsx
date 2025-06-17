@@ -23,8 +23,7 @@ export const VideoUploadManager: React.FC<VideoUploadManagerProps> = ({
     videoSources,
     thumbnails,
     uploadVideo,
-    refreshVideoData,
-    startPolling
+    refreshVideoData
   } = useVideoProcessing();
 
   // Handle file upload
@@ -237,7 +236,7 @@ export const VideoUploadManager: React.FC<VideoUploadManagerProps> = ({
       )}
 
       {/* Processing Info */}
-      {processingStatus && processingStatus !== 'COMPLETED' && (
+      {processingStatus && (
         <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
           <h4 className="text-sm font-medium text-zinc-300 mb-2">
             Video Processing Pipeline

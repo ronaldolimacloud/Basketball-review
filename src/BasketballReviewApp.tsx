@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, UserCheck, Key, Brain } from 'lucide-react';
+import { Play, Users, History, Trophy, Menu, X, BarChart3, LogOut, Radio, Key, Brain } from 'lucide-react';
 import type { Schema } from '../amplify/data/resource';
 
 // Components
@@ -197,11 +197,7 @@ const BasketballReviewApp = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
           <div className="h-full">
-            {activeTab === 'portal' ? (
-              <PlayerPortal />
-            ) : (
-              <ActiveComponent client={client} />
-            )}
+            <ActiveComponent client={client} />
           </div>
         </main>
       </div>

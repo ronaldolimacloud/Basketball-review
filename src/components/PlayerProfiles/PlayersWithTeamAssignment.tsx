@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, User, Users, TrendingUp, Settings, Save, X, Camera, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, User, Users, Settings, Save, X, Camera, Upload } from 'lucide-react';
 import type { Schema } from '../../../amplify/data/resource';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';

@@ -41,7 +41,7 @@ export function useVideoProcessing(): UseVideoProcessingReturn {
     '720p'?: string;
   } | null>(null);
   const [thumbnails, setThumbnails] = useState<string[] | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<number | null>(null);
 
   const uploadVideo = async (gameId: string, file: File): Promise<VideoUploadResult | null> => {
     try {

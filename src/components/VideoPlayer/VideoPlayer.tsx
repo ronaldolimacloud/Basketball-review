@@ -15,7 +15,6 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
   onTimeUpdate, 
   videoSources, 
-  thumbnails, 
   processingStatus 
 }) => {
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
