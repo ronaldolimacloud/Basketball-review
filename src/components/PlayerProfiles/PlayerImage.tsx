@@ -1,6 +1,6 @@
-import React from 'react';
-import { StorageImage } from '@aws-amplify/ui-react-storage';
+import React, { useState } from 'react';
 import { User } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface PlayerImageProps {
   profileImageUrl: string | null | undefined;
@@ -9,8 +9,14 @@ interface PlayerImageProps {
 }
 
 const PlayerImageComponent: React.FC<PlayerImageProps> = ({ profileImageUrl, className, alt }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  // Convert mock URLs to actual data URLs
+  const imageUrl = api.getMockImageUrl(profileImageUrl);
+
   // If no profile image, show default avatar
-  if (!profileImageUrl) {
+  if (!imageUrl) {
     return (
       <div className={`${className} flex items-center justify-center bg-zinc-800`}>
         <User className="w-1/3 h-1/3 text-zinc-500" />
@@ -18,31 +24,36 @@ const PlayerImageComponent: React.FC<PlayerImageProps> = ({ profileImageUrl, cla
     );
   }
 
-  // The path prop can be a simple string.
-  // For protected paths, the StorageImage component will automatically handle
-  // using the currently signed-in user's credentials to fetch the URL.
-  // There is no need to manipulate the path.
+  // Handle image load error
+  if (hasError) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-zinc-800`}>
+        <User className="w-1/3 h-1/3 text-zinc-500" />
+      </div>
+    );
+  }
+
   return (
-    <StorageImage
-      path={profileImageUrl} // <-- Just pass the full path directly!
-      alt={alt}
-      className={`${className} object-cover`}
-      validateObjectExistence={true}
-      loadingElement={
-        <div className={`${className} animate-pulse bg-zinc-700/50 flex items-center justify-center`}>
+    <div className={`${className} relative`}>
+      {isLoading && (
+        <div className={`${className} absolute inset-0 animate-pulse bg-zinc-700/50 flex items-center justify-center`}>
           <User className="w-1/4 h-1/4 text-zinc-500/50" />
         </div>
-      }
-      fallbackSrc="/default-player.png"
-      onGetUrlError={(error) => {
-        // This error handling is still great to have!
-        console.error(`❌ StorageImage error for path: ${profileImageUrl}`);
-        console.error('❌ Error details:', error);
-      }}
-    />
+      )}
+      <img
+        src={imageUrl}
+        alt={alt}
+        className={`${className} object-cover ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false);
+          setHasError(true);
+        }}
+      />
+    </div>
   );
 };
 
 PlayerImageComponent.displayName = 'PlayerImage';
 
-export const PlayerImage = React.memo(PlayerImageComponent);
+export const PlayerImage = PlayerImageComponent;

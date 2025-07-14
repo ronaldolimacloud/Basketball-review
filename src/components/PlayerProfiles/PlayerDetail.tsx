@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock, Brain, Star, Activity } from 'lucide-react';
-import type { Schema } from '../../../amplify/data/resource';
-import { generateClient } from 'aws-amplify/data';
+import { ArrowLeft, Trophy, TrendingUp, Calendar, BarChart3, Clock, Star, Activity } from 'lucide-react';
 import { PlayerImage } from './PlayerImage';
-import { BedrockService } from '../../services/bedrockService';
+import { api } from '../../services/api';
 
 interface PlayerDetailProps {
   player: any; // Player data passed from parent
   onBack: () => void;
-  client: ReturnType<typeof generateClient<Schema>>;
 }
 
-export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, client }) => {
+export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack }) => {
   const [gameStats, setGameStats] = useState<any[]>([]);
   const [, setLoading] = useState(true);
-  const [aiInsights, setAiInsights] = useState<string>('');
-  const [loadingInsights, setLoadingInsights] = useState(false);
-  const bedrockService = BedrockService.getInstance();
 
   useEffect(() => {
     fetchGameStats();
@@ -26,11 +20,20 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
     try {
       setLoading(true);
       
-      // Fetch game stats for this player
-      const gameStatsResult = await client.models.GameStat.list({
-        filter: { playerId: { eq: player.id } }
-      });
-      setGameStats(gameStatsResult.data || []);
+      // Fetch all games and filter for this player's stats
+      const gamesResult = await api.games.list();
+      if (gamesResult.success && gamesResult.data) {
+        // Filter games where this player has stats
+        const playerGames = gamesResult.data
+          .filter((game: any) => game.playerStats && game.playerStats[player.id])
+          .map((game: any) => ({
+            ...game.playerStats[player.id],
+            gameId: game.id,
+            gameDate: game.createdAt,
+            opponent: game.opponent
+          }));
+        setGameStats(playerGames);
+      }
       
     } catch (error) {
       console.error('Error fetching game stats:', error);
@@ -39,21 +42,6 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
     }
   };
 
-  const generatePlayerInsights = async () => {
-    setLoadingInsights(true);
-    try {
-      const insights = await bedrockService.analyzePlayerPerformance(
-        player.id, 
-        "Provide a comprehensive analysis of this player's strengths, areas for improvement, and development recommendations."
-      );
-      setAiInsights(insights);
-    } catch (error) {
-      console.error('Error generating insights:', error);
-      setAiInsights('Unable to generate insights at this time. Please try again later.');
-    } finally {
-      setLoadingInsights(false);
-    }
-  };
 
   const calculateAverages = () => {
     if (!player || gameStats.length === 0) return null;
@@ -125,24 +113,6 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
           </div>
         </div>
         
-        {/* AI Insights Button */}
-        <button
-          onClick={generatePlayerInsights}
-          disabled={loadingInsights}
-          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 disabled:from-zinc-600 disabled:to-zinc-700 px-6 py-3 rounded-xl font-semibold text-black disabled:text-zinc-400 transition-all transform hover:scale-105 shadow-lg flex items-center gap-2"
-        >
-          {loadingInsights ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <Brain className="w-5 h-5" />
-              AI Insights
-            </>
-          )}
-        </button>
       </div>
 
       {/* Enhanced Player Info Card */}
@@ -243,20 +213,6 @@ export const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, onBack, clie
         </div>
       </div>
 
-      {/* AI Insights Section */}
-      {aiInsights && (
-        <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 border border-yellow-500/20 rounded-xl p-6">
-          <h3 className="text-xl font-bold text-yellow-400 mb-4 flex items-center gap-2">
-            <Brain className="w-6 h-6" />
-            AI Performance Insights
-          </h3>
-          <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-700">
-            <div className="whitespace-pre-wrap text-zinc-300 leading-relaxed">
-              {aiInsights}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Season Averages */}
       {averages && (

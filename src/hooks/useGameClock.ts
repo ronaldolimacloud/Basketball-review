@@ -12,7 +12,7 @@ export const useGameClock = (onPlayersUpdate: (updater: (players: Player[]) => P
   }, [onPlayersUpdate]);
 
   useEffect(() => {
-    let interval: number | null = null;
+    let interval: NodeJS.Timeout | null = null;
     
     if (isClockRunning) {
       interval = setInterval(() => {

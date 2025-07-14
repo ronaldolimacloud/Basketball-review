@@ -1,66 +1,40 @@
 import '@testing-library/jest-dom';
 
-// Mock AWS Amplify
-jest.mock('aws-amplify', () => ({
-  generateClient: jest.fn(() => ({
-    graphql: jest.fn(),
-  })),
-  uploadData: jest.fn(() => ({
-    result: Promise.resolve({ key: 'mock-key' }),
-  })),
-  downloadData: jest.fn(() => ({
-    result: Promise.resolve({ body: new Blob() }),
-  })),
-}));
-
-// Mock video elements
-Object.defineProperty(HTMLMediaElement.prototype, 'play', {
-  writable: true,
-  value: jest.fn().mockImplementation(() => Promise.resolve()),
+// Mock image elements
+Object.defineProperty(HTMLImageElement.prototype, 'naturalHeight', {
+  get: function() {
+    return 100;
+  },
 });
 
-Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
-  writable: true,
-  value: jest.fn(),
+Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+  get: function() {
+    return 100;
+  },
 });
 
-Object.defineProperty(HTMLMediaElement.prototype, 'load', {
-  writable: true,
-  value: jest.fn(),
-});
+// Mock URL.createObjectURL
+global.URL.createObjectURL = jest.fn(() => 'mock-url');
+global.URL.revokeObjectURL = jest.fn();
 
-// Mock canvas for video thumbnail generation
-HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue({
-  fillStyle: '',
-  fillRect: jest.fn(),
-  drawImage: jest.fn(),
-});
+// Mock canvas for image thumbnail generation
+HTMLCanvasElement.prototype.getContext = jest.fn();
 
-HTMLCanvasElement.prototype.toBlob = jest.fn((callback) => {
-  const blob = new Blob(['mock video data'], { type: 'video/mp4' });
-  callback(blob);
-});
+// Mock FileReader
+const mockFileReader = {
+  result: null,
+  onload: null,
+  readAsDataURL: jest.fn(function(this: any) {
+    this.result = 'data:image/jpeg;base64,mock-base64-data';
+    if (this.onload) {
+      this.onload();
+    }
+  })
+};
+
+(global as any).FileReader = jest.fn(() => mockFileReader);
 
 // Global test configuration
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock intersection observer
-global.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Suppress console warnings during tests
-const originalWarn = console.warn;
-beforeEach(() => {
-  console.warn = jest.fn();
-});
-
-afterEach(() => {
-  console.warn = originalWarn;
-});
+if (typeof window !== 'undefined') {
+  // Additional test setup can go here
+}

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import { api } from '../services/api';
 
 export interface Team {
   id: string;
@@ -47,7 +46,7 @@ interface UseTeamManagementResult {
   getUnassignedPlayers: () => PlayerWithTeam[];
 }
 
-export const useTeamManagement = (client: ReturnType<typeof generateClient<Schema>>): UseTeamManagementResult => {
+export const useTeamManagement = (): UseTeamManagementResult => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<PlayerWithTeam[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -56,105 +55,98 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
   // Fetch all teams
   const fetchTeams = useCallback(async () => {
     try {
-      const result = await client.models.Team.list();
-      const teamsData = result.data || [];
-      
-      // Get player counts for each team
-      const teamsWithCounts = await Promise.all(
-        teamsData.map(async (team) => {
-          const teamPlayersResult = await client.models.TeamPlayer.list({
-            filter: { teamId: { eq: team.id }, isActive: { eq: true } }
-          });
-          
-          return {
-            id: team.id,
-            name: team.name,
-            description: team.description || undefined,
-            logoUrl: team.logoUrl || undefined,
-            isActive: team.isActive || true,
-            playerCount: teamPlayersResult.data?.length || 0,
-            createdAt: team.createdAt,
-            updatedAt: team.updatedAt
-          };
-        })
-      );
-      
-      setTeams(teamsWithCounts);
+      const response = await api.teams.list();
+      if (response.success) {
+        const teamsData = (response.data || []).map((team: any) => ({
+          id: team.id,
+          name: team.name,
+          description: team.description || undefined,
+          logoUrl: team.logoUrl || undefined,
+          isActive: team.isActive || true,
+          playerCount: team.players?.length || 0,
+          createdAt: team.createdAt,
+          updatedAt: team.updatedAt
+        }));
+        setTeams(teamsData);
+      }
     } catch (error) {
       console.error('Error fetching teams:', error);
     }
-  }, [client]);
+  }, []);
 
   // Fetch all players with their team associations
   const fetchPlayersWithTeams = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get all players
-      const playersResult = await client.models.Player.list();
-      const playersData = playersResult.data || [];
-
-      // Get all team-player associations
-      const teamPlayersResult = await client.models.TeamPlayer.list({
-        filter: { isActive: { eq: true } }
-      });
-      const teamPlayersData = teamPlayersResult.data || [];
-
-      // Get all teams for reference
-      const teamsResult = await client.models.Team.list();
-      const teamsData = teamsResult.data || [];
-
-      // Build players with team information
-      const playersWithTeams: PlayerWithTeam[] = playersData.map(player => {
-        // Find all teams this player belongs to
-        const playerTeamAssociations = teamPlayersData.filter(tp => tp.playerId === player.id);
-        const playerTeams = playerTeamAssociations.map(tp => {
-          const team = teamsData.find(t => t.id === tp.teamId);
-          return team ? {
-            id: team.id,
-            name: team.name,
-            description: team.description,
-            logoUrl: team.logoUrl,
-            isActive: team.isActive || true
-          } : null;
-        }).filter(Boolean) as Team[];
-
-        return {
+      // Get both players and teams
+      const [playersResponse, teamsResponse] = await Promise.all([
+        api.players.list(),
+        api.teams.list()
+      ]);
+      
+      if (playersResponse.success && teamsResponse.success) {
+        const allTeams = teamsResponse.data || [];
+        const allPlayers = playersResponse.data || [];
+        
+        // Create a map of player ID to teams they belong to
+        const playerTeamsMap = new Map<string, Team[]>();
+        
+        allTeams.forEach((team: any) => {
+          if (team.players && Array.isArray(team.players)) {
+            team.players.forEach((playerId: string) => {
+              if (!playerTeamsMap.has(playerId)) {
+                playerTeamsMap.set(playerId, []);
+              }
+              playerTeamsMap.get(playerId)!.push({
+                id: team.id,
+                name: team.name,
+                description: team.description || undefined,
+                logoUrl: team.logoUrl || undefined,
+                isActive: team.isActive || true,
+                playerCount: team.players?.length || 0
+              });
+            });
+          }
+        });
+        
+        // Map players with their teams
+        const playersWithTeams: PlayerWithTeam[] = allPlayers.map((player: any) => ({
           id: player.id,
           name: player.name,
           position: player.position || undefined,
           profileImageUrl: player.profileImageUrl || undefined,
           isActive: player.isActive || true,
-          teams: playerTeams,
-          currentTeamId: playerTeams.length > 0 ? playerTeams[0].id : undefined
-        };
-      });
-
-      setPlayers(playersWithTeams);
+          teams: playerTeamsMap.get(player.id) || [],
+          currentTeamId: playerTeamsMap.get(player.id)?.[0]?.id
+        }));
+        
+        setPlayers(playersWithTeams);
+      }
     } catch (error) {
       console.error('Error fetching players with teams:', error);
     } finally {
       setLoading(false);
     }
-  }, [client]);
+  }, []);
 
   // Create a new team
   const createTeam = useCallback(async (name: string, description?: string, logoUrl?: string): Promise<Team | null> => {
     try {
-      const result = await client.models.Team.create({
+      const response = await api.teams.create({
         name: name.trim(),
         description: description?.trim(),
         logoUrl: logoUrl?.trim(),
         isActive: true
       });
 
-      if (result.data) {
+      if (response.success && response.data) {
         const newTeam: Team = {
-          id: result.data.id,
-          name: result.data.name,
-          description: result.data.description || undefined,
-          logoUrl: result.data.logoUrl || undefined,
-          isActive: result.data.isActive || true,
+          id: response.data.id,
+          name: response.data.name,
+          description: response.data.description || undefined,
+          logoUrl: response.data.logoUrl || undefined,
+          isActive: response.data.isActive || true,
           playerCount: 0
         };
         
@@ -166,17 +158,14 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
       console.error('Error creating team:', error);
       return null;
     }
-  }, [client]);
+  }, []);
 
   // Update team
   const updateTeam = useCallback(async (teamId: string, updates: Partial<Team>): Promise<boolean> => {
     try {
-      const result = await client.models.Team.update({
-        id: teamId,
-        ...updates
-      });
+      const response = await api.teams.update(teamId, updates);
 
-      if (result.data) {
+      if (response.success) {
         setTeams(prev => prev.map(team => 
           team.id === teamId ? { ...team, ...updates } : team
         ));
@@ -187,103 +176,66 @@ export const useTeamManagement = (client: ReturnType<typeof generateClient<Schem
       console.error('Error updating team:', error);
       return false;
     }
-  }, [client]);
+  }, []);
 
   // Delete team
   const deleteTeam = useCallback(async (teamId: string): Promise<boolean> => {
     try {
-      // First remove all player associations
-      const teamPlayersResult = await client.models.TeamPlayer.list({
-        filter: { teamId: { eq: teamId } }
-      });
+      const response = await api.teams.delete(teamId);
       
-      for (const tp of teamPlayersResult.data || []) {
-        await client.models.TeamPlayer.delete({ id: tp.id });
+      if (response.success) {
+        setTeams(prev => prev.filter(team => team.id !== teamId));
+        
+        if (selectedTeamId === teamId) {
+          setSelectedTeamId(null);
+        }
+        
+        return true;
       }
-
-      // Then delete the team
-      await client.models.Team.delete({ id: teamId });
-      
-      setTeams(prev => prev.filter(team => team.id !== teamId));
-      
-      if (selectedTeamId === teamId) {
-        setSelectedTeamId(null);
-      }
-      
-      return true;
+      return false;
     } catch (error) {
       console.error('Error deleting team:', error);
       return false;
     }
-  }, [client, selectedTeamId]);
+  }, [selectedTeamId]);
 
   // Assign player to team
   const assignPlayerToTeam = useCallback(async (playerId: string, teamId: string): Promise<boolean> => {
     try {
-      // Check if association already exists
-      const existingResult = await client.models.TeamPlayer.list({
-        filter: { 
-          and: [
-            { playerId: { eq: playerId } },
-            { teamId: { eq: teamId } },
-            { isActive: { eq: true } }
-          ]
-        }
-      });
-
-      if (existingResult.data && existingResult.data.length > 0) {
-        console.log('Player already assigned to this team');
-        return true;
-      }
-
-      // Create new association
-      const result = await client.models.TeamPlayer.create({
-        playerId,
-        teamId,
-        isActive: true,
-        dateJoined: new Date().toISOString()
-      });
-
-      if (result.data) {
-        // Refresh data
+      console.log(`Assigning player ${playerId} to team ${teamId}`);
+      const response = await api.teams.addPlayer(teamId, playerId);
+      if (response.success) {
+        // Refresh both teams and players to ensure UI is in sync
         await Promise.all([fetchTeams(), fetchPlayersWithTeams()]);
         return true;
+      } else {
+        console.error('Failed to assign player to team:', response.error);
+        return false;
       }
-      return false;
     } catch (error) {
       console.error('Error assigning player to team:', error);
       return false;
     }
-  }, [client, fetchTeams, fetchPlayersWithTeams]);
+  }, [fetchTeams, fetchPlayersWithTeams]);
 
   // Remove player from team
   const removePlayerFromTeam = useCallback(async (playerId: string, teamId: string): Promise<boolean> => {
     try {
-      const result = await client.models.TeamPlayer.list({
-        filter: { 
-          and: [
-            { playerId: { eq: playerId } },
-            { teamId: { eq: teamId } },
-            { isActive: { eq: true } }
-          ]
-        }
-      });
-
-      for (const tp of result.data || []) {
-        await client.models.TeamPlayer.update({
-          id: tp.id,
-          isActive: false
-        });
+      console.log(`Removing player ${playerId} from team ${teamId}`);
+      const response = await api.teams.removePlayer(teamId, playerId);
+      if (response.success) {
+        // Refresh both teams and players to ensure UI is in sync
+        await Promise.all([fetchTeams(), fetchPlayersWithTeams()]);
+        return true;
+      } else {
+        console.error('Failed to remove player from team:', response.error);
+        return false;
       }
-
-      // Refresh data
-      await Promise.all([fetchTeams(), fetchPlayersWithTeams()]);
-      return true;
     } catch (error) {
       console.error('Error removing player from team:', error);
       return false;
     }
-  }, [client, fetchTeams, fetchPlayersWithTeams]);
+  }, [fetchTeams, fetchPlayersWithTeams]);
 
   // Transfer player between teams
   const transferPlayer = useCallback(async (playerId: string, fromTeamId: string, toTeamId: string): Promise<boolean> => {

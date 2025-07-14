@@ -1,30 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, User, Users, Settings, Save, X, Camera, Upload } from 'lucide-react';
-import type { Schema } from '../../../amplify/data/resource';
-import { generateClient } from 'aws-amplify/data';
-import { uploadData } from 'aws-amplify/storage';
+import { Plus, Edit2, Trash2, User, Save, X, Camera, Upload } from 'lucide-react';
+import { api } from '../../services/api';
+import type { Player } from '../../types/api.types';
 import { PlayerImage } from './PlayerImage';
 import { PlayerDetail } from './PlayerDetail';
-import { PlayerTeamAssignmentModal } from '../TeamManagement/PlayerTeamAssignmentModal';
-import { useTeamManagement, type PlayerWithTeam } from '../../hooks/useTeamManagement';
+// import { PlayerTeamAssignmentModal } from '../TeamManagement/PlayerTeamAssignmentModal';
+// import { useTeamManagement, type PlayerWithTeam } from '../../hooks/useTeamManagement';
 import { resizeProfileImage, validateImageFile, formatFileSize, getImageDimensions } from '../../utils/imageUtils';
 
-interface PlayersWithTeamAssignmentProps {
-  client: ReturnType<typeof generateClient<Schema>>;
-}
-
-export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps> = ({ client }) => {
-  const teamManagement = useTeamManagement(client);
+export const PlayersWithTeamAssignment: React.FC = () => {
+  // const teamManagement = useTeamManagement();
   
   // Local player state
-  const [players, setPlayers] = useState<any[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   
-  // Team assignment state
-  const [showPlayerAssignmentModal, setShowPlayerAssignmentModal] = useState(false);
-  const [selectedPlayerForAssignment, setSelectedPlayerForAssignment] = useState<PlayerWithTeam | null>(null);
+  // Team assignment state (temporarily disabled)
+  // const [showPlayerAssignmentModal, setShowPlayerAssignmentModal] = useState(false);
+  // const [selectedPlayerForAssignment, setSelectedPlayerForAssignment] = useState<PlayerWithTeam | null>(null);
 
   // Add player form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -59,7 +54,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
   const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
 
   useEffect(() => {
-    // Add a small delay to ensure Amplify is fully initialized
+    // Initialize player data
     const timer = setTimeout(() => {
       fetchPlayers();
     }, 100);
@@ -72,19 +67,14 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
       setLoading(true);
       setError(null);
       
-      const result = await client.models.Player.list();
+      const response = await api.players.list();
       
-      if (!result) {
-        setError('Unable to fetch players. Please try again.');
+      if (response.success) {
+        setPlayers(response.data || []);
+      } else {
+        setError(response.error?.message || 'Failed to fetch players');
         setPlayers([]);
-        return;
       }
-      
-      if (result.errors && result.errors.length > 0) {
-        setError(`Error loading players: ${result.errors.map(e => e.message).join(', ')}`);
-      }
-      
-      setPlayers(result.data || []);
     } catch (error) {
       console.error('Error fetching players:', error);
       setError(`Failed to fetch players: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -99,36 +89,19 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
     try {
       setUploading(true);
       
-      // Generate unique filename
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
-      const extension = file.name.split('.').pop() || 'jpg';
-      const filename = `player_${timestamp}_${randomString}.${extension}`;
+      console.log('🚀 Uploading optimized image');
       
-      // For protected storage, upload to the player-images folder
-      // AWS will automatically add the user's identityId to the path
-      const fullPath = `protected/player-images/${filename}`;
+      const result = await api.upload.playerImage(file, 'temp-player-id');
       
-      console.log('🚀 Uploading optimized image:', fullPath);
-      
-      const result = await uploadData({
-        path: fullPath,
-        data: file,
-        options: {
-          contentType: file.type,
-        }
-      }).result;
-      
-      console.log('✅ Upload successful:', result.path);
-      console.log('✅ Full result object:', result);
-      
-      // Store the FULL path returned by uploadData (includes identityId)
-      // This complete path should be used directly by StorageImage component
-      setFormData(prev => ({ ...prev, profileImageUrl: result.path }));
+      if (result.success && result.data?.imageUrl) {
+        console.log('✅ Upload successful:', result.data.imageUrl);
+        setFormData(prev => ({ ...prev, profileImageUrl: result.data.imageUrl }));
+      } else {
+        throw new Error(result.error?.message || 'Upload failed');
+      }
       
     } catch (error) {
       console.error('❌ Upload failed:', error);
-      console.error('❌ Error details:', error);
       alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
@@ -140,36 +113,19 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
     try {
       setUploading(true);
       
-      // Generate unique filename
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
-      const extension = file.name.split('.').pop() || 'jpg';
-      const filename = `player_${timestamp}_${randomString}.${extension}`;
+      console.log('🚀 Uploading optimized image (edit mode)');
       
-      // For protected storage, upload to the player-images folder
-      // AWS will automatically add the user's identityId to the path
-      const fullPath = `protected/player-images/${filename}`;
+      const result = await api.upload.playerImage(file, 'temp-player-id');
       
-      console.log('🚀 Uploading optimized image (edit mode):', fullPath);
-      
-      const result = await uploadData({
-        path: fullPath,
-        data: file,
-        options: {
-          contentType: file.type,
-        }
-      }).result;
-      
-      console.log('✅ Upload successful (edit mode):', result.path);
-      console.log('✅ Full result object (edit mode):', result);
-      
-      // Store the FULL path returned by uploadData (includes identityId)
-      // This complete path should be used directly by StorageImage component
-      setEditForm(prev => ({ ...prev, profileImageUrl: result.path }));
+      if (result.success && result.data?.imageUrl) {
+        console.log('✅ Upload successful (edit mode):', result.data.imageUrl);
+        setEditForm(prev => ({ ...prev, profileImageUrl: result.data.imageUrl }));
+      } else {
+        throw new Error(result.error?.message || 'Upload failed');
+      }
       
     } catch (error) {
       console.error('❌ Upload failed (edit mode):', error);
-      console.error('❌ Error details (edit mode):', error);
       alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
@@ -239,7 +195,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
         return;
       }
       
-      // First create the player
+      // Create the player using REST API
       const playerData = {
         name: formData.name,
         position: formData.position || undefined,
@@ -247,36 +203,22 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
         weight: formData.weight || undefined,
         jerseyNumber: formData.jerseyNumber ? parseInt(formData.jerseyNumber) : undefined,
         profileImageUrl: formData.profileImageUrl || undefined,
-        isActive: true,
-        totalGamesPlayed: 0,
-        careerPoints: 0,
-        careerAssists: 0,
-        careerRebounds: 0,
-        careerSteals: 0,
-        careerBlocks: 0,
-        careerFouls: 0,
-        careerTurnovers: 0,
-        careerFgMade: 0,
-        careerFgAttempts: 0,
-        careerFtMade: 0,
-        careerFtAttempts: 0,
-        careerMinutesPlayed: 0
+        isActive: true
       };
       
       console.log('🚀 Creating player with data:', playerData);
-      console.log('🖼️ Profile image URL being saved to database:', formData.profileImageUrl || 'NO URL PROVIDED');
       
-      const newPlayer = await client.models.Player.create(playerData);
+      const response = await api.players.create(playerData);
 
-      console.log('✅ Player created successfully:', newPlayer);
-      console.log('🔍 Check if the returned player has profileImageUrl:', newPlayer.data?.profileImageUrl);
-      
-      // Refresh the players list
-      await fetchPlayers();
-      await teamManagement.fetchPlayersWithTeams();
-      
-      // Reset form
-      resetForm();
+      if (response.success) {
+        console.log('✅ Player created successfully:', response.data);
+        // Refresh the players list
+        await fetchPlayers();
+        // Reset form
+        resetForm();
+      } else {
+        throw new Error(response.error?.message || 'Failed to create player');
+      }
       
     } catch (error) {
       console.error('❌ Error creating player:', error);
@@ -288,14 +230,15 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
     try {
       console.log('Updating player:', playerId, 'with data:', updatedData);
       
-      await client.models.Player.update({
-        id: playerId,
-        ...updatedData
-      });
+      const response = await api.players.update(playerId, updatedData);
       
-      setEditingPlayer(null);
-      setPreviewUrl(null);
-      fetchPlayers();
+      if (response.success) {
+        setEditingPlayer(null);
+        setPreviewUrl(null);
+        await fetchPlayers();
+      } else {
+        throw new Error(response.error?.message || 'Failed to update player');
+      }
       
     } catch (error) {
       console.error('Error updating player:', error);
@@ -329,33 +272,31 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
     setResizedImageSize('');
   };
 
-  // Get team information for a player
-  const getPlayerTeams = (playerId: string) => {
-    const teamPlayer = teamManagement.players.find(p => p.id === playerId);
-    return teamPlayer?.teams || [];
+  // Get team information for a player (temporarily disabled)
+  const getPlayerTeams = (_playerId: string) => {
+    // Temporarily disabled until team management is re-enabled
+    return [];
   };
 
-  const handlePlayerAssignment = (player: any) => {
-    const teamPlayer = teamManagement.players.find(p => p.id === player.id);
-    if (teamPlayer) {
-      setSelectedPlayerForAssignment(teamPlayer);
-      setShowPlayerAssignmentModal(true);
-    }
-  };
+
 
   const handleDeletePlayer = async (playerId: string) => {
     if (window.confirm('Are you sure you want to delete this player?')) {
       try {
-        await client.models.Player.delete({ id: playerId });
-        await fetchPlayers();
-        await teamManagement.fetchPlayersWithTeams();
+        const response = await api.players.delete(playerId);
+        if (response.success) {
+          await fetchPlayers();
+        } else {
+          throw new Error(response.error?.message || 'Failed to delete player');
+        }
       } catch (error) {
         console.error('Error deleting player:', error);
+        alert(`Failed to delete player: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   };
 
-  if (loading || teamManagement.loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -377,7 +318,6 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
       <PlayerDetail 
         player={selectedPlayer}
         onBack={() => setSelectedPlayerId(null)}
-        client={client}
       />
     );
   }
@@ -440,7 +380,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
               </span>
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                Teams: {teamManagement.teams.length}
+                Teams: {/* teamManagement.teams.length */}
               </span>
             </div>
           </div>
@@ -750,43 +690,26 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
                 </div>
 
                 {/* Team Assignments with enhanced styling */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-zinc-300 flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      Teams
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePlayerAssignment(player);
-                      }}
-                      className="text-xs text-yellow-400 hover:text-yellow-300 flex items-center gap-1 hover:bg-yellow-500/10 px-2 py-1 rounded transition-all"
-                    >
-                      <Settings className="w-3 h-3" />
-                      Manage
-                    </button>
-                  </div>
+                <div className="space-y-2">
                   {playerTeams.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {playerTeams.map(team => (
-                        <span 
-                          key={team.id}
-                          className="text-xs bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 text-yellow-400 px-2 py-1 rounded-full"
-                        >
-                          {team.name}
-                        </span>
-                      ))}
-                    </div>
+                    <div className="text-xs text-zinc-400 mb-2">Team Assignments:</div>
                   ) : (
-                    <div className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded-full inline-block">
-                      No team assignments
-                    </div>
+                    <div className="text-xs text-zinc-400 mb-2">No team assignments</div>
                   )}
+                  {/* No team assignments to display */}
                 </div>
 
                 {/* Enhanced Action Buttons */}
                 <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPlayerId(player.id);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white text-sm font-medium py-2 px-3 rounded-lg transition-all"
+                  >
+                    View Details
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -801,8 +724,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
                         profileImageUrl: player.profileImageUrl || ''
                       });
                     }}
-                    className="p-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg transition-all transform hover:scale-110 shadow-lg"
-                    title="Edit Player"
+                    className="bg-zinc-700 hover:bg-zinc-600 text-white p-2 rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -811,8 +733,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
                       e.stopPropagation();
                       handleDeletePlayer(player.id);
                     }}
-                    className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-all transform hover:scale-110 shadow-lg"
-                    title="Delete Player"
+                    className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1047,7 +968,8 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
         </div>
       )}
 
-      {/* Player Team Assignment Modal */}
+      {/* Player Team Assignment Modal - Temporarily disabled */}
+      {/* 
       <PlayerTeamAssignmentModal
         isOpen={showPlayerAssignmentModal}
         onClose={() => setShowPlayerAssignmentModal(false)}
@@ -1056,6 +978,7 @@ export const PlayersWithTeamAssignment: React.FC<PlayersWithTeamAssignmentProps>
         onAssignPlayerToTeam={teamManagement.assignPlayerToTeam}
         onRemovePlayerFromTeam={teamManagement.removePlayerFromTeam}
       />
+      */}
     </div>
   );
 }; 

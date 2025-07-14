@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/data';
 import { Play, Users, Settings, Trophy } from 'lucide-react';
-import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat } from '../../types/game.types';
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 import { useTeamManagement } from '../../hooks/useTeamManagement';
 
 interface GameSetupFormProps {
   onSetupComplete: (teamId: string, teamName: string, opponent: string, format: GameFormat, players: any[]) => void;
-  client: ReturnType<typeof generateClient<Schema>>;
 }
 
 interface GamePlayer {
@@ -36,14 +33,14 @@ interface GamePlayer {
   startTime: number | null;
 }
 
-export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete, client }) => {
+export const GameSetupForm: React.FC<GameSetupFormProps> = ({ onSetupComplete }) => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [opponentName, setOpponentName] = useState('');
   const [gameFormat, setGameFormat] = useState<GameFormat>('quarters');
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   
   // Use team management hook
-  const teamManagement = useTeamManagement(client);
+  const teamManagement = useTeamManagement();
 
   // Get available players based on selected team
   const availablePlayers = selectedTeamId 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { StatType } from '../types/game.types';
+import type { StatType, GameFormat } from '../types/game.types';
 
 interface GamePlayer {
   id: string;
@@ -30,6 +30,8 @@ interface UseGameStatsResult {
   players: GamePlayer[];
   selectedPlayerId: string | null;
   selectedPlayerName: string | null;
+  currentPeriod: number;
+  periodStartTime: number;
   setSelectedPlayerId: (id: string | null) => void;
   updatePlayerName: (playerId: string, newName: string) => void;
   updatePlayerStat: (playerId: string, statType: StatType, value?: number) => void;
@@ -39,16 +41,33 @@ interface UseGameStatsResult {
   updateTimeOnCourt: (currentGameTime: number) => void;
   correctPlayerStats: (playerId: string, newStats: GamePlayer['stats'], onTeamScoreChange?: (pointsDifference: number) => void) => void;
   resetPlayerStats: (playerId: string, onTeamScoreChange?: (pointsDifference: number) => void) => void;
+  recordGameEvent: (eventType: string, eventDetail: string, points?: number, playerId?: string) => void;
+  endPeriod: (homeScore: number, awayScore: number, gameTime: number) => void;
+  startNewPeriod: () => void;
 }
 
-export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult => {
-  const [players, setPlayers] = useState<GamePlayer[]>(initialPlayers);
+interface UseGameStatsProps {
+  initialPlayers: GamePlayer[];
+  gameId?: string;
+  gameFormat?: GameFormat;
+  teamId?: string;
+}
+
+export function useGameStats({
+  initialPlayers,
+  gameId,
+  gameFormat = 'quarters',
+  teamId
+}: UseGameStatsProps): UseGameStatsResult {
+  const [players, setPlayers] = useState<GamePlayer[]>(initialPlayers || []);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+  const [currentPeriod, setCurrentPeriod] = useState<number>(1);
+  const [periodStartTime, setPeriodStartTime] = useState<number>(0);
 
   // Update players when initialPlayers changes
   useEffect(() => {
-    setPlayers(initialPlayers);
+    setPlayers(initialPlayers || []);
   }, [initialPlayers]);
 
   const selectedPlayerName = players.find(p => p.id === selectedPlayerId)?.name || null;
@@ -285,10 +304,67 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     });
   }, []);
 
+  const recordGameEvent = useCallback(async (
+    eventType: string, 
+    eventDetail: string, 
+    _points?: number, 
+    playerId?: string
+  ) => {
+    // For now, just log the event - can be enhanced with REST API calls later
+    const periodTime = (lastUpdateTime - periodStartTime) / 1000;
+    
+    // Format period time as MM:SS
+    const minutes = Math.floor(periodTime / 60);
+    const seconds = Math.floor(periodTime % 60);
+    const formattedPeriodTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    console.log('Game event recorded:', {
+      eventType,
+      eventDetail,
+      period: currentPeriod,
+      periodTime: formattedPeriodTime,
+      playerId,
+      gameId,
+      teamId
+    });
+  }, [gameId, teamId, currentPeriod, lastUpdateTime, periodStartTime]);
+
+  const endPeriod = useCallback(async (homeScore: number, awayScore: number, gameTime: number) => {
+    const periodDuration = gameTime - periodStartTime;
+
+    // Record period end event
+    await recordGameEvent('PERIOD_END', gameFormat === 'quarters' ? `Quarter ${currentPeriod}` : `Half ${currentPeriod}`);
+
+    console.log('Period ended:', {
+      period: currentPeriod,
+      homeScore,
+      awayScore,
+      duration: periodDuration,
+      gameId
+    });
+  }, [gameId, gameFormat, currentPeriod, periodStartTime, recordGameEvent]);
+
+  const startNewPeriod = useCallback(() => {
+    const newPeriod = currentPeriod + 1;
+    const maxPeriods = gameFormat === 'quarters' ? 4 : 2;
+    
+    if (newPeriod <= maxPeriods) {
+      setCurrentPeriod(newPeriod);
+      setPeriodStartTime(lastUpdateTime);
+      
+      console.log('New period started:', {
+        period: newPeriod,
+        startTime: lastUpdateTime
+      });
+    }
+  }, [currentPeriod, gameFormat, lastUpdateTime]);
+
   return {
     players,
     selectedPlayerId,
     selectedPlayerName,
+    currentPeriod,
+    periodStartTime,
     setSelectedPlayerId,
     updatePlayerName,
     updatePlayerStat,
@@ -298,5 +374,8 @@ export const useGameStats = (initialPlayers: GamePlayer[]): UseGameStatsResult =
     updateTimeOnCourt,
     correctPlayerStats,
     resetPlayerStats,
+    recordGameEvent,
+    endPeriod,
+    startNewPeriod,
   };
-}; 
+}

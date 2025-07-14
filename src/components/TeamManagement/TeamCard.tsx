@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Edit3, Trash2, MoreVertical } from 'lucide-react';
-import { StorageImage } from '@aws-amplify/ui-react-storage';
 import type { Team } from '../../hooks/useTeamManagement';
+import { api } from '../../services/api';
 
 interface TeamCardProps {
   team: Team;
@@ -19,6 +19,8 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   isSelected = false
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [logoLoading, setLogoLoading] = useState(true);
+  const [logoError, setLogoError] = useState(false);
 
   const handleCardClick = () => {
     onSelect(team.id);
@@ -98,24 +100,25 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         {/* Team Logo & Name */}
         <div className="flex items-center gap-3">
           {/* Team Logo */}
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-700 flex items-center justify-center flex-shrink-0 border border-zinc-600">
-            {team.logoUrl ? (
-              <StorageImage
-                path={team.logoUrl}
-                alt={`${team.name} logo`}
-                className="w-full h-full object-cover"
-                validateObjectExistence={true}
-                loadingElement={
-                  <div className="w-full h-full animate-pulse bg-zinc-600/50 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-700 flex items-center justify-center flex-shrink-0 border border-zinc-600 relative">
+            {api.getMockImageUrl(team.logoUrl) && !logoError ? (
+              <>
+                {logoLoading && (
+                  <div className="w-full h-full animate-pulse bg-zinc-600/50 flex items-center justify-center absolute inset-0">
                     <Users className="w-4 h-4 text-zinc-500/50" />
                   </div>
-                }
-                fallbackSrc=""
-                onGetUrlError={(error) => {
-                  console.error(`❌ StorageImage error for team logo: ${team.logoUrl}`);
-                  console.error('❌ Error details:', error);
-                }}
-              />
+                )}
+                <img
+                  src={api.getMockImageUrl(team.logoUrl)!}
+                  alt={`${team.name} logo`}
+                  className={`w-full h-full object-cover ${logoLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setLogoLoading(false)}
+                  onError={() => {
+                    setLogoLoading(false);
+                    setLogoError(true);
+                  }}
+                />
+              </>
             ) : (
               <Users className="w-6 h-6 text-zinc-400" />
             )}

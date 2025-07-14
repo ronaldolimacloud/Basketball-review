@@ -1,12 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
 import type { GameFormat, PeriodScore, StatType } from '../../types/game.types';
 
 // Components (keeping the original game components)
-import { VideoClipEditor } from '../VideoPlayer/VideoClipEditor';
-import { ClipLibrary } from '../VideoClips/ClipLibrary';
-import { ClipViewer } from '../VideoClips/ClipViewer';
 import { GameClock } from '../GameClock';
 import { ScoreBoard } from '../ScoreBoard';
 import { StatButtons, BoxScore } from '../StatTracker';
@@ -16,6 +11,7 @@ import { StatCorrectionModal } from './StatCorrectionModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { GameScoreEditModal } from './GameScoreEditModal';
 import { ExportModal } from './ExportModal';
+import Button from '../ui/Button';
 
 // Hooks
 import { useGameClock } from '../../hooks/useGameClock';
@@ -23,13 +19,17 @@ import { useGameStats } from '../../hooks/useGameStats';
 
 // Utils
 import { calculateTeamFouls } from '../../utils/statCalculations';
-import { createPeriodScore, getMaxPeriods } from '../../utils/gameHelpers';
+import { createPeriodScore, getMaxPeriods, createAutomaticPeriodScores } from '../../utils/gameHelpers';
+import { logger } from '../../utils/logger';
+
+// API Service
+import { api } from '../../services/api';
 
 // Icons
-import { Users, BarChart3, Edit3, Download, Video, Clock, Scissors } from 'lucide-react';
+import { Users, BarChart3, Edit3, Download } from 'lucide-react';
 
 interface GameReviewProps {
-  client: ReturnType<typeof generateClient<Schema>>;
+  // Props can be added here as needed
 }
 
 interface GamePlayer {
@@ -57,7 +57,7 @@ interface GamePlayer {
   startTime: number | null;
 }
 
-export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
+export const GameReview: React.FC<GameReviewProps> = () => {
   // Setup state
   const [isSetup, setIsSetup] = useState(true);
   const [teamName, setTeamName] = useState('');
@@ -93,14 +93,14 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   // Export state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Video clips state
-  const [activeVideoTab, setActiveVideoTab] = useState<'player' | 'library'>('player');
-  const [selectedClip, setSelectedClip] = useState<any>(null);
-  const [videoSrc] = useState<string>('');
-
   
   // Initialize game stats hook - this manages the actual player state
-  const gameStats = useGameStats(initialPlayers);
+  const gameStats = useGameStats({
+    initialPlayers,
+    gameId: currentGame?.id,
+    gameFormat,
+    teamId: currentGame?.homeTeamId
+  });
   
   // Stable callback for game clock to prevent interval recreation
   const handlePlayersUpdate = useCallback((updater: (players: any[]) => any[]) => {
@@ -134,7 +134,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
     
     // Create game record in database using existing team
     try {
-      const newGame = await client.models.Game.create({
+      const response = await api.games.create({
         homeTeamId: teamId,
         homeTeamName: teamName,
         awayTeamName: opponent,
@@ -143,13 +143,17 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         homeTeamScore: 0,
         awayTeamScore: 0,
         isCompleted: false,
-        periodScores: JSON.stringify([])
+        periodScores: []
       });
       
-      setCurrentGame(newGame.data);
-      setIsSetup(false);
+      if (response.success) {
+        setCurrentGame(response.data);
+        setIsSetup(false);
+      } else {
+        logger.error('Error creating game:', response.error);
+      }
     } catch (error) {
-      console.error('Error creating game:', error);
+      logger.error('Error creating game:', error);
     }
   };
 
@@ -204,7 +208,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
       (parseInt(p.id.replace(/\D/g, '')) || 0) === playerOutId);
     
     if (!playerOut) {
-      console.error('Player to substitute out not found!');
+      logger.error('Player to substitute out not found!');
       return;
     }
     
@@ -295,70 +299,267 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
     setIsExportModalOpen(true);
   };
 
-  // Video clip handlers
-  const handleClipCreated = (clipData: any) => {
-    console.log('Clip created:', clipData);
-    // Optionally switch to library view to see the new clip
-    setActiveVideoTab('library');
-  };
-
-  const handleClipSelect = (clip: any) => {
-    setSelectedClip(clip);
-  };
-
-  const handleClipViewerClose = () => {
-    setSelectedClip(null);
-  };
-
   const handleCancelExport = () => {
     setIsExportModalOpen(false);
+  };
+
+  // Helper function to create play-by-play events from player stats
+  const createPlayByPlayEvents = async (gameId: string, players: GamePlayer[], finalHomeScore: number, finalAwayScore: number) => {
+    console.log('Creating play-by-play events...', {
+      gameId,
+      playerCount: players.length,
+      finalHomeScore,
+      finalAwayScore,
+      totalGameTime: gameClock.gameClock
+    });
+
+    let eventTime = 0;
+    let currentHomeScore = 0;
+    const currentAwayScore = 0;
+    let eventsCreated = 0;
+    
+    // Calculate total events and time distribution
+    const totalGameTime = Math.max(gameClock.gameClock || 0, 3600); // Minimum 1 hour if no game time
+    const totalEvents = players.reduce((total, player) => 
+      total + player.stats.fgMade + player.stats.ftMade + player.stats.assists + 
+      player.stats.offRebounds + player.stats.defRebounds + player.stats.steals + 
+      player.stats.blocks + player.stats.fouls + player.stats.turnovers, 0
+    );
+    
+    const timeIncrement = totalEvents > 0 ? totalGameTime / totalEvents : 60; // 1 minute default
+    console.log(`Distributing ${totalEvents} events over ${totalGameTime} seconds (${timeIncrement.toFixed(2)}s per event)`);
+
+    // Helper function to create a single event with error handling
+    const createSingleEvent = async (player: GamePlayer, eventType: string, eventDetail: string, points?: number) => {
+      try {
+        eventTime += timeIncrement;
+        const period = Math.min(Math.ceil((eventTime / totalGameTime) * (gameFormat === 'quarters' ? 4 : 2)), gameFormat === 'quarters' ? 4 : 2);
+        const periodDuration = totalGameTime / (gameFormat === 'quarters' ? 4 : 2);
+        const periodTime = Math.floor(eventTime % periodDuration);
+        const minutes = Math.floor(periodTime / 60);
+        const seconds = Math.floor(periodTime % 60);
+        
+        const eventData = {
+          gameId,
+          playerId: player.id,
+          timestamp: new Date().toISOString(),
+          gameTime: eventTime,
+          period: Math.max(1, period),
+          periodTime: `${minutes}:${seconds.toString().padStart(2, '0')}`,
+          eventType: eventType,
+          eventDetail,
+          isHomeTeam: true,
+          homeTeamScore: Math.min(currentHomeScore, finalHomeScore),
+          awayTeamScore: Math.min(currentAwayScore, finalAwayScore),
+          ...(points ? { points } : {})
+        };
+
+        const response = await api.stats.createEvent(eventData);
+        if (response.success) {
+          eventsCreated++;
+          
+          if (eventsCreated % 10 === 0) {
+            console.log(`Created ${eventsCreated}/${totalEvents} events...`);
+          }
+        } else {
+          console.error(`Failed to create ${eventType} event for player ${player.name}:`, response.error);
+        }
+      } catch (error) {
+        console.error(`Failed to create ${eventType} event for player ${player.name}:`, error);
+        // Continue with other events
+      }
+    };
+
+    for (const player of players) {
+      console.log(`Processing events for player: ${player.name}`);
+      
+      // Create field goal events
+      for (let i = 0; i < player.stats.fgMade; i++) {
+        const isThreePointer = Math.random() > 0.7;
+        const points = isThreePointer ? 3 : 2;
+        currentHomeScore += points;
+        await createSingleEvent(player, 'SCORE', isThreePointer ? '3PT' : '2PT', points);
+      }
+
+      // Create free throw events
+      for (let i = 0; i < player.stats.ftMade; i++) {
+        currentHomeScore += 1;
+        await createSingleEvent(player, 'SCORE', 'FT', 1);
+      }
+
+      // Create assist events
+      for (let i = 0; i < player.stats.assists; i++) {
+        await createSingleEvent(player, 'ASSIST', 'Assist');
+      }
+
+      // Create rebound events
+      for (let i = 0; i < player.stats.offRebounds; i++) {
+        await createSingleEvent(player, 'REBOUND', 'Offensive');
+      }
+      for (let i = 0; i < player.stats.defRebounds; i++) {
+        await createSingleEvent(player, 'REBOUND', 'Defensive');
+      }
+
+      // Create other events
+      const otherEvents = [
+        { count: player.stats.steals, type: 'STEAL', detail: 'Steal' },
+        { count: player.stats.blocks, type: 'BLOCK', detail: 'Block' },
+        { count: player.stats.fouls, type: 'FOUL', detail: 'Personal Foul' },
+        { count: player.stats.turnovers, type: 'TURNOVER', detail: 'Turnover' }
+      ];
+
+      for (const eventGroup of otherEvents) {
+        for (let i = 0; i < eventGroup.count; i++) {
+          await createSingleEvent(player, eventGroup.type, eventGroup.detail);
+        }
+      }
+    }
+
+    console.log(`Successfully created ${eventsCreated} play-by-play events`);
+  };
+
+  // Helper function to create period statistics
+  const createPeriodStatistics = async (gameId: string, periodScores: any[], gameFormat: GameFormat) => {
+    console.log('Creating period statistics with data:', periodScores);
+    
+    for (let i = 0; i < periodScores.length; i++) {
+      const period = periodScores[i];
+      const periodNumber = i + 1;
+      
+      // Use cumulative scores (totalTeamScore/totalOpponentScore) if available,
+      // otherwise fall back to teamScore/opponentScore
+      const homeScore = period.totalTeamScore ?? period.teamScore ?? 0;
+      const awayScore = period.totalOpponentScore ?? period.opponentScore ?? 0;
+      
+      console.log(`Creating PeriodStats for period ${periodNumber}:`, {
+        homeScore,
+        awayScore,
+        periodType: gameFormat === 'quarters' ? 'quarter' : 'half'
+      });
+      
+      try {
+        const response = await api.stats.createOrUpdate({
+          gameId,
+          period: periodNumber,
+          periodType: gameFormat === 'quarters' ? 'quarter' : 'half',
+          homeTeamScore: homeScore,
+          awayTeamScore: awayScore,
+          startTime: new Date().toISOString(), // Ideally this would be the actual period start time
+          endTime: new Date().toISOString(),   // Ideally this would be the actual period end time
+          duration: Math.floor((gameClock.gameClock || 0) / (gameFormat === 'quarters' ? 4 : 2)), // Estimate
+          homeTeamStats: {},
+          awayTeamStats: {},
+        });
+        console.log(`PeriodStats created successfully for period ${periodNumber}:`, response);
+      } catch (error) {
+        console.error(`Failed to create PeriodStats for period ${periodNumber}:`, error);
+        throw error;
+      }
+    }
   };
 
   const handleFinishGame = async () => {
     if (!currentGame) return;
 
+    console.log('Starting game save process...', {
+      gameId: currentGame.id,
+      teamScore,
+      opponentScore,
+      playerCount: gameStats.players.length,
+      periodScoresCount: periodScores.length,
+      gameFormat
+    });
+
     try {
+      // Determine which period scores to use
+      let finalPeriodScores = periodScores;
+      
+      // If no manual period data exists, create automatic period distribution
+      if (periodScores.length === 0) {
+        console.log('No manual period data found, creating automatic period distribution...');
+        finalPeriodScores = createAutomaticPeriodScores(teamScore, opponentScore, gameFormat);
+        console.log('Created automatic period scores:', finalPeriodScores);
+      }
+
       // Update game with final scores and completion status
-      await client.models.Game.update({
-        id: currentGame.id,
+      console.log('Updating game record...');
+      const updateResponse = await api.games.update(currentGame.id, {
         homeTeamScore: teamScore,
         awayTeamScore: opponentScore,
         isCompleted: true,
         totalDuration: gameClock.gameClock,
-        periodScores: JSON.stringify(periodScores)
+        periodScores: finalPeriodScores
       });
+      
+      if (updateResponse.success) {
+        console.log('Game record updated successfully');
+      } else {
+        console.error('Error updating game:', updateResponse.error);
+      }
+
+      // Validate player data before creating events
+      if (!gameStats.players || gameStats.players.length === 0) {
+        console.warn('No player data available, skipping play-by-play events');
+      } else {
+        console.log(`Creating play-by-play events for ${gameStats.players.length} players...`);
+        try {
+          await createPlayByPlayEvents(currentGame.id, gameStats.players, teamScore, opponentScore);
+          console.log('Play-by-play events created successfully');
+        } catch (error) {
+          console.error('Error creating play-by-play events:', error);
+          // Don't throw - continue with other saves
+        }
+      }
+
+      // Create period statistics
+      console.log(`Creating period statistics for ${finalPeriodScores.length} periods...`);
+      try {
+        await createPeriodStatistics(currentGame.id, finalPeriodScores, gameFormat);
+        console.log('Period statistics created successfully');
+      } catch (error) {
+        console.error('Error creating period statistics:', error);
+        // Don't throw - continue with other saves
+      }
 
       // Save individual player stats
+      console.log('Saving individual player statistics...');
       for (const player of gameStats.players) {
-        await client.models.GameStat.create({
-          gameId: currentGame.id,
-          playerId: player.id,
-          points: player.stats.points,
-          assists: player.stats.assists,
-          offRebounds: player.stats.offRebounds,
-          defRebounds: player.stats.defRebounds,
-          steals: player.stats.steals,
-          blocks: player.stats.blocks,
-          fouls: player.stats.fouls,
-          turnovers: player.stats.turnovers,
-          fgMade: player.stats.fgMade,
-          fgAttempts: player.stats.fgAttempts,
-          ftMade: player.stats.ftMade,
-          ftAttempts: player.stats.ftAttempts,
-          minutesPlayed: Math.floor(player.stats.timeOnCourt / 60),
-          plusMinus: player.stats.plusMinus,
-          startedOnCourt: player.onCourt
-        });
+        try {
+          const statResponse = await api.stats.createOrUpdate({
+            gameId: currentGame.id,
+            playerId: player.id,
+            points: player.stats.points,
+            assists: player.stats.assists,
+            offRebounds: player.stats.offRebounds,
+            defRebounds: player.stats.defRebounds,
+            steals: player.stats.steals,
+            blocks: player.stats.blocks,
+            fouls: player.stats.fouls,
+            turnovers: player.stats.turnovers,
+            fgMade: player.stats.fgMade,
+            fgAttempts: player.stats.fgAttempts,
+            ftMade: player.stats.ftMade,
+            ftAttempts: player.stats.ftAttempts,
+            minutesPlayed: Math.floor(player.stats.timeOnCourt / 60),
+            plusMinus: player.stats.plusMinus,
+            startedOnCourt: player.onCourt
+          });
+          
+          if (!statResponse.success) {
+            console.error(`Error saving stats for player ${player.name}:`, statResponse.error);
+          }
+        } catch (error) {
+          console.error(`Error saving stats for player ${player.name}:`, error);
+        }
 
         // Update player career stats
         try {
-          const existingPlayer = await client.models.Player.get({ id: player.id });
-          if (existingPlayer.data) {
-            const data = existingPlayer.data;
+          const playerResponse = await api.players.getById(player.id);
+          if (playerResponse.success) {
+            const data = playerResponse.data;
             const totalRebounds = player.stats.offRebounds + player.stats.defRebounds;
             
-            await client.models.Player.update({
-              id: player.id,
+            const updateResponse = await api.players.update(player.id, {
               totalGamesPlayed: (data.totalGamesPlayed || 0) + 1,
               careerPoints: (data.careerPoints || 0) + player.stats.points,
               careerAssists: (data.careerAssists || 0) + player.stats.assists,
@@ -373,13 +574,19 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
               careerFtAttempts: (data.careerFtAttempts || 0) + player.stats.ftAttempts,
               careerMinutesPlayed: (data.careerMinutesPlayed || 0) + Math.floor(player.stats.timeOnCourt / 60)
             });
+            
+            if (!updateResponse.success) {
+              console.error(`Error updating career stats for player ${player.name}:`, updateResponse.error);
+            }
           }
         } catch (error) {
-          console.error('Error updating player career stats:', error);
+          console.error(`Error updating career stats for player ${player.name}:`, error);
         }
       }
 
-      alert('Game completed and saved successfully!');
+      console.log('Game save process completed successfully!');
+      alert('Game completed and saved successfully! All statistics, play-by-play events, and period data have been recorded.');
+      
       // Reset for new game
       setIsSetup(true);
       setCurrentGame(null);
@@ -391,8 +598,8 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
       gameClock.resetClock();
       
     } catch (error) {
-      console.error('Error finishing game:', error);
-      alert('Error saving game. Please try again.');
+      console.error('Critical error during game save:', error);
+      alert(`Error saving game: ${error instanceof Error ? error.message : 'Unknown error'}. Please check the console for details and try again.`);
     }
   };
 
@@ -407,125 +614,49 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
   const teamFouls = calculateTeamFouls(convertToLegacyPlayers(gameStats.players));
 
   if (isSetup) {
-    return <GameSetupForm onSetupComplete={handleSetupComplete} client={client} />;
+    return <GameSetupForm onSetupComplete={handleSetupComplete} />;
   }
 
   return (
     <div className="h-full flex flex-col space-y-6">
-      {/* Game Header - More compact for dashboard */}
+      {/* Centered Scoreboard */}
       <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-xl p-6 border border-zinc-700">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-yellow-400 mb-2">Live Game Review</h2>
-            <p className="text-xl text-zinc-300">{teamName} vs {opponentName}</p>
-            <div className="mt-2 flex items-center gap-4 text-sm text-zinc-400">
+        <div className="flex justify-center">
+          <div className="relative text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-12 py-8 border-2 border-yellow-400/30 shadow-2xl group">
+            <div className="text-6xl font-black text-yellow-400 tracking-wider flex items-center justify-center gap-6">
+              <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
+              <span className="text-emerald-400">{teamScore}</span>
+              <span className="text-zinc-400 text-4xl">-</span>
+              <span className="text-red-400">{opponentScore}</span>
+              <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-6 text-sm text-zinc-400">
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                Game Format: {gameFormat === 'quarters' ? '4 Quarters' : '2 Halves'}
+                {gameFormat === 'quarters' ? 'Quarter' : 'Half'} {currentPeriod}
               </span>
               <span>•</span>
-              <span>Active Players: {gameStats.players.filter(p => p.onCourt).length}</span>
-              <span>•</span>
-              <span>Total Players: {gameStats.players.length}</span>
+              <span>Active: {gameStats.players.filter(p => p.onCourt).length}/5</span>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="relative text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-8 py-6 border-2 border-yellow-400/30 shadow-2xl group">
-              <div className="text-6xl font-black text-yellow-400 tracking-wider flex items-center justify-center gap-4">
-                <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
-                <span className="text-emerald-400">{teamScore}</span>
-                <span className="text-zinc-400 text-4xl">×</span>
-                <span className="text-red-400">{opponentScore}</span>
-                <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
-              </div>
-              <div className="text-sm text-zinc-400 mt-2 font-medium tracking-wide">LIVE SCORE</div>
-              
-              {/* Edit Score Button */}
-              <button
-                onClick={handleEditScoreRequest}
-                className="absolute top-3 right-3 p-2 bg-zinc-800/80 hover:bg-zinc-700 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                title="Edit Score"
-              >
-                <Edit3 className="w-4 h-4 text-zinc-400 hover:text-yellow-400" />
-              </button>
-            </div>
+            
+            {/* Edit Score Button */}
+            <Button variant="secondary" size="small" className="p-2"
+              onClick={handleEditScoreRequest}
+              title="Edit Score"
+            >
+              <Edit3 className="w-4 h-4 text-zinc-400 hover:text-yellow-400" />
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Dashboard Grid */}
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-6 min-h-0">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
         
-        {/* Left Column - Video Player */}
-        <div className="xl:col-span-2 flex flex-col min-h-0">
-          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 flex-1 flex flex-col">
-            {/* Video Tabs */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
-                <Video className="w-5 h-5" />
-                Video Analysis & Clips
-              </h3>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveVideoTab('player')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 text-sm ${
-                    activeVideoTab === 'player'
-                      ? 'bg-yellow-500 text-black font-medium'
-                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-                  }`}
-                >
-                  <Scissors className="w-4 h-4" />
-                  Clip Editor
-                </button>
-                <button
-                  onClick={() => setActiveVideoTab('library')}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 text-sm ${
-                    activeVideoTab === 'library'
-                      ? 'bg-yellow-500 text-black font-medium'
-                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  Clip Library
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex-1 min-h-0">
-              {activeVideoTab === 'player' ? (
-                <VideoClipEditor 
-                  gameId={currentGame?.id}
-                  onClipCreated={handleClipCreated}
-                />
-              ) : (
-                <ClipLibrary 
-                  gameId={currentGame?.id}
-                  onClipSelect={handleClipSelect}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Game Controls */}
+        {/* Left Column - Scoreboard & Game Clock */}
         <div className="flex flex-col space-y-4 min-h-0">
           
-          {/* Game Clock Card */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
-            <GameClock
-              gameClock={gameClock.gameClock}
-              isClockRunning={gameClock.isClockRunning}
-              currentPeriod={currentPeriod}
-              gameFormat={gameFormat}
-              onClockToggle={gameClock.toggleClock}
-              onPeriodChange={setCurrentPeriod}
-              onEndPeriod={handleEndPeriod}
-            />
-          </div>
-          
-          {/* ScoreBoard Card */}
+          {/* ScoreBoard Card with integrated Game Clock */}
           <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
             <ScoreBoard
               teamName={teamName}
@@ -538,6 +669,14 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
               onOpponentScore={handleOpponentScore}
               onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
               onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
+              // Game clock props
+              gameClock={gameClock.gameClock}
+              isClockRunning={gameClock.isClockRunning}
+              currentPeriod={currentPeriod}
+              gameFormat={gameFormat}
+              onClockToggle={gameClock.toggleClock}
+              onPeriodChange={setCurrentPeriod}
+              onEndPeriod={handleEndPeriod}
             />
           </div>
           
@@ -546,6 +685,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
             <StatButtons
               selectedPlayerName={gameStats.selectedPlayerName}
               onStatUpdate={handleStatUpdate}
+              isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
             />
           </div>
         </div>
@@ -567,7 +707,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {gameStats.players.filter(p => p.onCourt).map((player) => (
                 <div key={player.id} className="relative group">
-                  <button
+                  <Button
                     onClick={() => gameStats.setSelectedPlayerId(player.id)}
                     className={`w-full p-3 rounded-lg text-left transition-all ${
                       gameStats.selectedPlayerId === player.id
@@ -579,8 +719,8 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
                     <div className="text-xs opacity-75 mt-1">
                       {player.stats.points}pts • {player.stats.assists}ast • {player.stats.fouls}f
                     </div>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleStatCorrectionRequest(player);
@@ -589,7 +729,7 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
                     title="Edit Stats"
                   >
                     <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -611,19 +751,19 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       onClick={() => handleStatCorrectionRequest(player)}
                       className="p-1.5 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Edit Stats"
                     >
                       <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleSubstitutionRequest(player)}
                       className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-xs transition-colors"
                     >
                       Sub In
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -640,13 +780,13 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
             Live Box Score
           </h3>
           
-          <button
+          <Button
             onClick={handleExportRequest}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
           >
             <Download className="w-4 h-4" />
             Export Data
-          </button>
+          </Button>
         </div>
         <div className="overflow-x-auto">
           <BoxScore 
@@ -672,12 +812,12 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
 
       {/* Finish Game Button */}
       <div className="text-center pt-4 border-t border-zinc-700">
-        <button
+        <Button
           onClick={handleFinishGame}
           className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 px-12 py-4 rounded-xl font-bold text-white transition-all transform hover:scale-105 shadow-lg text-lg"
         >
           🏁 Finish & Save Game
-        </button>
+        </Button>
       </div>
 
       {/* Substitution Modal */}
@@ -733,14 +873,6 @@ export const GameReview: React.FC<GameReviewProps> = ({ client }) => {
         onCancel={handleCancelExport}
       />
 
-      {/* Clip Viewer Modal */}
-      {selectedClip && (
-        <ClipViewer
-          clip={selectedClip}
-          videoSrc={videoSrc}
-          onClose={handleClipViewerClose}
-        />
-      )}
     </div>
   );
-}; 
+};

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Users, Check, Camera, Upload } from 'lucide-react';
-import { uploadData } from 'aws-amplify/storage';
+import { api } from '../../services/api';
 import { resizeProfileImage, validateImageFile, formatFileSize, getImageDimensions } from '../../utils/imageUtils';
 
 interface TeamCreationModalProps {
@@ -34,27 +34,16 @@ export const TeamCreationModal: React.FC<TeamCreationModalProps> = ({
     try {
       setUploading(true);
       
-      // Generate unique filename
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
-      const extension = file.name.split('.').pop() || 'jpg';
-      const filename = `team_${timestamp}_${randomString}.${extension}`;
+      console.log('🚀 Uploading optimized team logo');
       
-      // For protected storage, upload to the team-logos folder
-      const fullPath = `protected/team-logos/${filename}`;
+      const result = await api.upload.teamLogo(file, 'temp-team-id');
       
-      console.log('🚀 Uploading optimized team logo:', fullPath);
-      
-      const result = await uploadData({
-        path: fullPath,
-        data: file,
-        options: {
-          contentType: file.type,
-        }
-      }).result;
-      
-      console.log('✅ Upload successful:', result.path);
-      setLogoUrl(result.path);
+      if (result.success && result.data?.logoUrl) {
+        console.log('✅ Upload successful:', result.data.logoUrl);
+        setLogoUrl(result.data.logoUrl);
+      } else {
+        throw new Error(result.error?.message || 'Upload failed');
+      }
       
     } catch (error) {
       console.error('❌ Upload failed:', error);

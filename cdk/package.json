@@ -1,0 +1,41 @@
+{
+  "name": "basketball-review-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "basketball-review-cdk": "bin/basketball-review-cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "diff": "cdk diff",
+    "destroy": "cdk destroy",
+    "dev:start": "./dev-start.sh",
+    "dev:stop": "./dev-stop.sh",
+    "db:status": "./db-utils.sh status",
+    "db:scan": "./db-utils.sh scan",
+    "db:clear": "./db-utils.sh clear",
+    "db:players": "./db-utils.sh players",
+    "db:teams": "./db-utils.sh teams",
+    "db:games": "./db-utils.sh games",
+    "db:backup": "./db-utils.sh backup",
+    "db:shell": "./db-utils.sh shell"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.5",
+    "@types/node": "20.6.3",
+    "aws-cdk": "2.98.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "~5.2.2"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.98.0",
+    "constructs": "^10.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

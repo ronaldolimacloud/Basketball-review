@@ -22,6 +22,8 @@ export const PlayerTeamAssignmentModal: React.FC<PlayerTeamAssignmentModalProps>
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
   const [originalTeamIds, setOriginalTeamIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Initialize selected teams when player changes
   useEffect(() => {
@@ -29,6 +31,8 @@ export const PlayerTeamAssignmentModal: React.FC<PlayerTeamAssignmentModalProps>
       const playerTeamIds = new Set(player.teams.map(team => team.id));
       setSelectedTeamIds(playerTeamIds);
       setOriginalTeamIds(playerTeamIds);
+      setError(null);
+      setSuccess(null);
     }
   }, [player]);
 
@@ -50,24 +54,45 @@ export const PlayerTeamAssignmentModal: React.FC<PlayerTeamAssignmentModalProps>
     if (!player || processing) return;
 
     setProcessing(true);
+    setError(null);
+    setSuccess(null);
+    
     try {
       // Find teams to add and remove
       const teamsToAdd = Array.from(selectedTeamIds).filter(id => !originalTeamIds.has(id));
       const teamsToRemove = Array.from(originalTeamIds).filter(id => !selectedTeamIds.has(id));
 
+      let hasErrors = false;
+
       // Process additions
       for (const teamId of teamsToAdd) {
-        await onAssignPlayerToTeam(player.id, teamId);
+        const success = await onAssignPlayerToTeam(player.id, teamId);
+        if (!success) {
+          hasErrors = true;
+          const teamName = teams.find(t => t.id === teamId)?.name || 'Unknown team';
+          setError(`Failed to add player to ${teamName}`);
+        }
       }
 
       // Process removals
       for (const teamId of teamsToRemove) {
-        await onRemovePlayerFromTeam(player.id, teamId);
+        const success = await onRemovePlayerFromTeam(player.id, teamId);
+        if (!success) {
+          hasErrors = true;
+          const teamName = teams.find(t => t.id === teamId)?.name || 'Unknown team';
+          setError(`Failed to remove player from ${teamName}`);
+        }
       }
 
-      onClose();
+      if (!hasErrors) {
+        setSuccess('Team assignments updated successfully!');
+        setTimeout(() => {
+          onClose();
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error updating player team assignments:', error);
+      setError('An unexpected error occurred while updating team assignments');
     } finally {
       setProcessing(false);
     }
@@ -76,6 +101,8 @@ export const PlayerTeamAssignmentModal: React.FC<PlayerTeamAssignmentModalProps>
   const handleClose = () => {
     if (!processing) {
       setSelectedTeamIds(originalTeamIds);
+      setError(null);
+      setSuccess(null);
       onClose();
     }
   };
@@ -110,6 +137,18 @@ export const PlayerTeamAssignmentModal: React.FC<PlayerTeamAssignmentModalProps>
 
         {/* Content */}
         <div className="p-6">
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+              <p className="text-sm text-emerald-400">{success}</p>
+            </div>
+          )}
+          
           <div className="mb-4">
             <h3 className="text-sm font-medium text-zinc-300 mb-3">
               Select teams for this player:

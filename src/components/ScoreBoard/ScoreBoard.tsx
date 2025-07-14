@@ -1,5 +1,7 @@
 import React from 'react';
 import { Timer } from 'lucide-react';
+import Button from '../ui/Button';
+import { GameClock } from '../GameClock';
 
 interface ScoreBoardProps {
   teamName: string;
@@ -12,6 +14,14 @@ interface ScoreBoardProps {
   onOpponentScore: (points: number) => void;
   onTeamTimeout: () => void;
   onOpponentTimeout: () => void;
+  // Game clock props
+  gameClock?: number;
+  isClockRunning?: boolean;
+  currentPeriod?: number;
+  gameFormat?: 'quarters' | 'halves';
+  onClockToggle?: () => void;
+  onPeriodChange?: (period: number) => void;
+  onEndPeriod?: () => void;
 }
 
 export const ScoreBoard: React.FC<ScoreBoardProps> = ({
@@ -24,6 +34,14 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   onOpponentScore,
   onTeamTimeout,
   onOpponentTimeout,
+  // Game clock props
+  gameClock,
+  isClockRunning,
+  currentPeriod,
+  gameFormat,
+  onClockToggle,
+  onPeriodChange,
+  onEndPeriod,
 }) => {
   return (
     <div className="bg-zinc-800 rounded-lg p-4 mb-4 border border-zinc-600">
@@ -45,42 +63,42 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
       </div>
       
       <div className="flex justify-center gap-2 mb-4">
-        <button
-          onClick={() => onOpponentScore(1)}
-          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
-        >
+        <Button variant="primary" className="px-6 py-3 font-bold" onClick={() => onOpponentScore(1)}>
           {opponentName} +1
-        </button>
-        <button
-          onClick={() => onOpponentScore(2)}
-          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
-        >
+        </Button>
+        <Button variant="primary" className="px-6 py-3 font-bold" onClick={() => onOpponentScore(2)}>
           {opponentName} +2
-        </button>
-        <button
-          onClick={() => onOpponentScore(3)}
-          className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 px-6 py-3 rounded-lg inline-block text-black font-bold transition-all transform hover:scale-105 shadow-lg"
-        >
+        </Button>
+        <Button variant="primary" className="px-6 py-3 font-bold" onClick={() => onOpponentScore(3)}>
           {opponentName} +3
-        </button>
+        </Button>
       </div>
+
+      {/* Game Clock */}
+      {gameClock !== undefined && onClockToggle && onEndPeriod && currentPeriod && gameFormat && (
+        <div className="mb-4 border-t border-zinc-600 pt-4">
+          <GameClock
+            gameClock={gameClock}
+            isClockRunning={isClockRunning || false}
+            currentPeriod={currentPeriod}
+            gameFormat={gameFormat}
+            onClockToggle={onClockToggle}
+            onPeriodChange={onPeriodChange || (() => {})}
+            onEndPeriod={onEndPeriod}
+          />
+        </div>
+      )}
 
       {/* Timeout buttons */}
       <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={onTeamTimeout}
-          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
-        >
+        <Button variant="secondary" className="p-2 text-sm flex items-center justify-center gap-2" onClick={onTeamTimeout}>
           <Timer className="w-4 h-4" />
           {teamName} Timeout
-        </button>
-        <button
-          onClick={onOpponentTimeout}
-          className="bg-zinc-700 hover:bg-zinc-600 p-2 rounded text-sm flex items-center justify-center gap-2 transition-colors"
-        >
+        </Button>
+        <Button variant="secondary" className="p-2 text-sm flex items-center justify-center gap-2" onClick={onOpponentTimeout}>
           <Timer className="w-4 h-4" />
           {opponentName} Timeout
-        </button>
+        </Button>
       </div>
     </div>
   );

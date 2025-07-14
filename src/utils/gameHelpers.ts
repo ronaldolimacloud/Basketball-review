@@ -86,4 +86,55 @@ export const getGameStatus = (period: number, format: GameFormat): string => {
     const overtimeNumber = period - maxPeriods;
     return `OT${overtimeNumber > 1 ? overtimeNumber : ''}`;
   }
+};
+
+/**
+ * Create automatic period scores when manual period data is unavailable
+ */
+export const createAutomaticPeriodScores = (
+  finalTeamScore: number,
+  finalOpponentScore: number,
+  format: GameFormat
+): PeriodScore[] => {
+  const maxPeriods = getMaxPeriods(format);
+  const periods: PeriodScore[] = [];
+  
+  // Distribute scores evenly across periods with some randomization
+  const teamScorePerPeriod = Math.floor(finalTeamScore / maxPeriods);
+  const opponentScorePerPeriod = Math.floor(finalOpponentScore / maxPeriods);
+  
+  // Calculate remainder to distribute
+  const teamRemainder = finalTeamScore % maxPeriods;
+  const opponentRemainder = finalOpponentScore % maxPeriods;
+  
+  let cumulativeTeamScore = 0;
+  let cumulativeOpponentScore = 0;
+  
+  for (let period = 1; period <= maxPeriods; period++) {
+    // Add base score per period
+    let periodTeamScore = teamScorePerPeriod;
+    let periodOpponentScore = opponentScorePerPeriod;
+    
+    // Distribute remainder points, giving preference to later periods
+    if (teamRemainder > 0 && period > maxPeriods - teamRemainder) {
+      periodTeamScore++;
+    }
+    if (opponentRemainder > 0 && period > maxPeriods - opponentRemainder) {
+      periodOpponentScore++;
+    }
+    
+    cumulativeTeamScore += periodTeamScore;
+    cumulativeOpponentScore += periodOpponentScore;
+    
+    periods.push(createPeriodScore(
+      period,
+      format,
+      cumulativeTeamScore,
+      cumulativeOpponentScore,
+      cumulativeTeamScore - periodTeamScore,
+      cumulativeOpponentScore - periodOpponentScore
+    ));
+  }
+  
+  return periods;
 }; 

@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { Users, ChevronDown, ChevronRight, Settings, UserPlus, FolderPlus, Trophy } from 'lucide-react';
-import { StorageImage } from '@aws-amplify/ui-react-storage';
-import type { Schema } from '../../../amplify/data/resource';
-import { generateClient } from 'aws-amplify/data';
 import { useTeamManagement, type Team, type PlayerWithTeam } from '../../hooks/useTeamManagement';
 import { TeamCreationModal } from '../TeamManagement/TeamCreationModal';
 import { TeamCard } from '../TeamManagement/TeamCard';
@@ -10,11 +7,11 @@ import { PlayerTeamAssignmentModal } from '../TeamManagement/PlayerTeamAssignmen
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface MyTeamsProps {
-  client: ReturnType<typeof generateClient<Schema>>;
+  // Props can be added here as needed
 }
 
-export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
-  const teamManagement = useTeamManagement(client);
+export const MyTeams: React.FC<MyTeamsProps> = () => {
+  const teamManagement = useTeamManagement();
   
   // UI State
   const [showTeamCreationModal, setShowTeamCreationModal] = useState(false);
@@ -184,20 +181,13 @@ export const MyTeams: React.FC<MyTeamsProps> = ({ client }) => {
                     )}
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-700 flex items-center justify-center border border-zinc-600">
                       {team.logoUrl ? (
-                        <StorageImage
-                          path={team.logoUrl}
+                        <img
+                          src={team.logoUrl}
                           alt={`${team.name} logo`}
                           className="w-full h-full object-cover"
-                          validateObjectExistence={true}
-                          loadingElement={
-                            <div className="w-full h-full animate-pulse bg-zinc-600/50 flex items-center justify-center">
-                              <Trophy className="w-4 h-4 text-zinc-500/50" />
-                            </div>
-                          }
-                          fallbackSrc=""
-                          onGetUrlError={(error) => {
-                            console.error(`❌ StorageImage error for team logo: ${team.logoUrl}`);
-                            console.error('❌ Error details:', error);
+                          onError={(e) => {
+                            console.error(`❌ Image error for team logo: ${team.logoUrl}`);
+                            e.currentTarget.style.display = 'none';
                           }}
                         />
                       ) : (
