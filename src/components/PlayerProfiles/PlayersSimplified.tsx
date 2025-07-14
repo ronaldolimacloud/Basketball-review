@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, User, Save, X, Users, Camera, Upload } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Player } from '../../types/api.types';
@@ -9,7 +8,6 @@ import { validateImageFile, resizeProfileImage, formatFileSize } from '../../uti
 
 export const PlayersSimplified: React.FC = () => {
   const teamManagement = useTeamManagement();
-  const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -449,10 +447,7 @@ export const PlayersSimplified: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <h3 
-                      className="font-semibold text-white hover:text-yellow-400 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/players/${player.id}`)}
-                    >
+                    <h3 className="font-semibold text-white">
                       {player.name}
                     </h3>
                     <div className="text-sm text-zinc-400 flex gap-2">
