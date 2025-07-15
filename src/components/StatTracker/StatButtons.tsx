@@ -1,17 +1,28 @@
 import React from 'react';
 import type { StatType } from '../../types/game.types';
 import Button from '../ui/Button';
+import { Timer } from 'lucide-react';
 
 interface StatButtonsProps {
   selectedPlayerName: string | null;
   onStatUpdate: (statType: StatType, value?: number) => void;
   isGameStarted?: boolean;
+  onOpponentScore?: (points: number) => void;
+  onTeamTimeout?: () => void;
+  onOpponentTimeout?: () => void;
+  teamName?: string;
+  opponentName?: string;
 }
 
 export const StatButtons: React.FC<StatButtonsProps> = ({
   selectedPlayerName,
   onStatUpdate,
   isGameStarted = false,
+  onOpponentScore,
+  onTeamTimeout,
+  onOpponentTimeout,
+  teamName = 'Team',
+  opponentName = 'Opponent',
 }) => {
   const isDisabled = !selectedPlayerName || !isGameStarted;
 
@@ -113,6 +124,61 @@ export const StatButtons: React.FC<StatButtonsProps> = ({
         >
           Foul
         </Button>
+      </div>
+      
+      {/* Game Management Section */}
+      <div className="mt-4 pt-4 border-t border-zinc-600">
+        <h4 className="text-md font-medium text-zinc-400 mb-3">Game Management</h4>
+        
+        {/* Opponent Scoring */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <Button 
+            variant="danger" 
+            className="p-2 text-sm font-bold" 
+            onClick={() => onOpponentScore?.(1)}
+            disabled={!isGameStarted}
+          >
+            {opponentName} +1
+          </Button>
+          <Button 
+            variant="danger" 
+            className="p-2 text-sm font-bold" 
+            onClick={() => onOpponentScore?.(2)}
+            disabled={!isGameStarted}
+          >
+            {opponentName} +2
+          </Button>
+          <Button 
+            variant="danger" 
+            className="p-2 text-sm font-bold" 
+            onClick={() => onOpponentScore?.(3)}
+            disabled={!isGameStarted}
+          >
+            {opponentName} +3
+          </Button>
+        </div>
+        
+        {/* Timeout Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            variant="secondary" 
+            className="p-2 text-sm flex items-center justify-center gap-2" 
+            onClick={onTeamTimeout}
+            disabled={!isGameStarted}
+          >
+            <Timer className="w-4 h-4" />
+            {teamName} Timeout
+          </Button>
+          <Button 
+            variant="secondary" 
+            className="p-2 text-sm flex items-center justify-center gap-2" 
+            onClick={onOpponentTimeout}
+            disabled={!isGameStarted}
+          >
+            <Timer className="w-4 h-4" />
+            {opponentName} Timeout
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -2,8 +2,6 @@ import React, { useState, useCallback } from 'react';
 import type { GameFormat, PeriodScore, StatType } from '../../types/game.types';
 
 // Components (keeping the original game components)
-import { GameClock } from '../GameClock';
-import { ScoreBoard } from '../ScoreBoard';
 import { StatButtons, BoxScore } from '../StatTracker';
 import { GameSetupForm } from './GameSetupForm';
 import { SubstitutionModal } from '../PlayerManagement/SubstitutionModal';
@@ -26,7 +24,7 @@ import { logger } from '../../utils/logger';
 import { api } from '../../services/api';
 
 // Icons
-import { Users, BarChart3, Edit3, Download } from 'lucide-react';
+import { Users, BarChart3, Edit3, Download, Clock } from 'lucide-react';
 
 interface GameReviewProps {
   // Props can be added here as needed
@@ -624,12 +622,69 @@ export const GameReview: React.FC<GameReviewProps> = () => {
         <div className="flex justify-center">
           <div className="relative text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-12 py-8 border-2 border-yellow-400/30 shadow-2xl group">
             <div className="text-6xl font-black text-yellow-400 tracking-wider flex items-center justify-center gap-6">
-              <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
+              <div className="flex flex-col items-center">
+                <img 
+                  src="/team_logo.png" 
+                  alt="Team Logo" 
+                  className="w-12 h-12 mb-2 rounded-full border-2 border-yellow-400/50"
+                />
+                <span className="text-white text-3xl font-bold uppercase">{teamName}</span>
+              </div>
               <span className="text-emerald-400">{teamScore}</span>
               <span className="text-zinc-400 text-4xl">-</span>
               <span className="text-red-400">{opponentScore}</span>
-              <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
+              <div className="flex flex-col items-center">
+                <img 
+                  src="/team_logo.png" 
+                  alt="Team Logo" 
+                  className="w-12 h-12 mb-2 rounded-full border-2 border-yellow-400/50"
+                />
+                <span className="text-white text-3xl font-bold uppercase">{opponentName}</span>
+              </div>
             </div>
+            
+            {/* Team Stats Section */}
+            <div className="mt-4 grid grid-cols-2 gap-8 text-sm">
+              <div className="flex flex-col items-center">
+                <div className="flex gap-4">
+                  <span className="text-zinc-400">Fouls: <span className="font-semibold text-amber-400">{teamFouls}</span></span>
+                  <span className="text-zinc-400">Timeouts: <span className="font-semibold text-yellow-400">{teamTimeouts}</span></span>
+                </div>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="flex gap-4">
+                  <span className="text-zinc-400">Fouls: <span className="font-semibold text-amber-400">0</span></span>
+                  <span className="text-zinc-400">Timeouts: <span className="font-semibold text-yellow-400">{opponentTimeouts}</span></span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Game Clock Section */}
+            <div className="mt-6 flex items-center justify-center gap-4 bg-zinc-800/50 rounded-lg p-4 border border-zinc-600">
+              <Clock className="w-5 h-5 text-yellow-400" />
+              <span className="text-2xl font-mono text-yellow-400">
+                {(() => {
+                  const mins = Math.floor(gameClock.gameClock / 60);
+                  const secs = gameClock.gameClock % 60;
+                  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                })()}
+              </span>
+              <Button
+                onClick={gameClock.toggleClock}
+                variant={gameClock.isClockRunning ? 'danger' : 'success'}
+                className="px-4 py-2"
+              >
+                {gameClock.isClockRunning ? 'Stop' : 'Start'}
+              </Button>
+              <Button
+                onClick={handleEndPeriod}
+                variant="warning"
+                className="px-4 py-2 font-semibold"
+              >
+                End {gameFormat === 'quarters' ? 'Quarter' : 'Half'}
+              </Button>
+            </div>
+            
             <div className="mt-4 flex items-center justify-center gap-6 text-sm text-zinc-400">
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
@@ -640,7 +695,7 @@ export const GameReview: React.FC<GameReviewProps> = () => {
             </div>
             
             {/* Edit Score Button */}
-            <Button variant="secondary" size="small" className="p-2"
+            <Button variant="secondary" size="small" className="p-2 mt-4"
               onClick={handleEditScoreRequest}
               title="Edit Score"
             >
@@ -650,45 +705,18 @@ export const GameReview: React.FC<GameReviewProps> = () => {
         </div>
       </div>
 
-      {/* Main Dashboard Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-        
-        {/* Left Column - Scoreboard & Game Clock */}
-        <div className="flex flex-col space-y-4 min-h-0">
-          
-          {/* ScoreBoard Card with integrated Game Clock */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
-            <ScoreBoard
-              teamName={teamName}
-              opponentName={opponentName}
-              teamScore={teamScore}
-              opponentScore={opponentScore}
-              teamFouls={teamFouls}
-              teamTimeouts={teamTimeouts}
-              opponentTimeouts={opponentTimeouts}
-              onOpponentScore={handleOpponentScore}
-              onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
-              onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
-              // Game clock props
-              gameClock={gameClock.gameClock}
-              isClockRunning={gameClock.isClockRunning}
-              currentPeriod={currentPeriod}
-              gameFormat={gameFormat}
-              onClockToggle={gameClock.toggleClock}
-              onPeriodChange={setCurrentPeriod}
-              onEndPeriod={handleEndPeriod}
-            />
-          </div>
-          
-          {/* Stats Buttons Card */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4 flex-1">
-            <StatButtons
-              selectedPlayerName={gameStats.selectedPlayerName}
-              onStatUpdate={handleStatUpdate}
-              isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
-            />
-          </div>
-        </div>
+      {/* Stats Buttons Section - Full Width */}
+      <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
+        <StatButtons
+          selectedPlayerName={gameStats.selectedPlayerName}
+          onStatUpdate={handleStatUpdate}
+          isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
+          onOpponentScore={handleOpponentScore}
+          onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
+          onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
+          teamName={teamName}
+          opponentName={opponentName}
+        />
       </div>
 
       {/* Bottom Section - Player Selection */}

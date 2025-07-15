@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Edit3, Trash2, MoreVertical } from 'lucide-react';
-import type { Team } from '../../hooks/useTeamManagement';
+import type { Team, PlayerWithTeam } from '../../hooks/useTeamManagement';
 import { api } from '../../services/api';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface TeamCardProps {
   team: Team;
+  players?: PlayerWithTeam[];
   onSelect: (teamId: string) => void;
   onEdit: (team: Team) => void;
   onDelete: (teamId: string) => void;
@@ -13,6 +15,7 @@ interface TeamCardProps {
 
 export const TeamCard: React.FC<TeamCardProps> = ({
   team,
+  players = [],
   onSelect,
   onEdit,
   onDelete,
@@ -151,6 +154,46 @@ export const TeamCard: React.FC<TeamCardProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Player Avatars Preview */}
+        {players.length > 0 && (
+          <div className="pt-3 border-t border-zinc-700">
+            <div className="flex items-center justify-between">
+              <div className="flex -space-x-2">
+                {players.slice(0, 4).map((player, index) => (
+                  <div
+                    key={player.id}
+                    className="w-8 h-8 rounded-full overflow-hidden bg-zinc-700 border-2 border-zinc-800 flex items-center justify-center"
+                    style={{ zIndex: players.length - index }}
+                  >
+                    {player.profileImageUrl ? (
+                      <PlayerImage 
+                        profileImageUrl={player.profileImageUrl} 
+                        className="w-8 h-8 rounded-full object-cover"
+                        alt={player.name}
+                      />
+                    ) : (
+                      <span className="text-xs font-medium text-zinc-400">
+                        {player.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {players.length > 4 && (
+                  <div className="w-8 h-8 rounded-full bg-zinc-700 border-2 border-zinc-800 flex items-center justify-center">
+                    <span className="text-xs font-medium text-zinc-400">
+                      +{players.length - 4}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-zinc-500">
+                {players.slice(0, 2).map(p => p.name).join(', ')}
+                {players.length > 2 && ` +${players.length - 2} more`}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Created Date */}
         {team.createdAt && (

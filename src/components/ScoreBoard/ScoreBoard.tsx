@@ -1,7 +1,6 @@
 import React from 'react';
 import { Timer } from 'lucide-react';
 import Button from '../ui/Button';
-import { GameClock } from '../GameClock';
 
 interface ScoreBoardProps {
   teamName: string;
@@ -14,14 +13,6 @@ interface ScoreBoardProps {
   onOpponentScore: (points: number) => void;
   onTeamTimeout: () => void;
   onOpponentTimeout: () => void;
-  // Game clock props
-  gameClock?: number;
-  isClockRunning?: boolean;
-  currentPeriod?: number;
-  gameFormat?: 'quarters' | 'halves';
-  onClockToggle?: () => void;
-  onPeriodChange?: (period: number) => void;
-  onEndPeriod?: () => void;
 }
 
 export const ScoreBoard: React.FC<ScoreBoardProps> = ({
@@ -34,14 +25,6 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   onOpponentScore,
   onTeamTimeout,
   onOpponentTimeout,
-  // Game clock props
-  gameClock,
-  isClockRunning,
-  currentPeriod,
-  gameFormat,
-  onClockToggle,
-  onPeriodChange,
-  onEndPeriod,
 }) => {
   return (
     <div className="bg-zinc-800 rounded-lg p-4 mb-4 border border-zinc-600">
@@ -73,21 +56,6 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           {opponentName} +3
         </Button>
       </div>
-
-      {/* Game Clock */}
-      {gameClock !== undefined && onClockToggle && onEndPeriod && currentPeriod && gameFormat && (
-        <div className="mb-4 border-t border-zinc-600 pt-4">
-          <GameClock
-            gameClock={gameClock}
-            isClockRunning={isClockRunning || false}
-            currentPeriod={currentPeriod}
-            gameFormat={gameFormat}
-            onClockToggle={onClockToggle}
-            onPeriodChange={onPeriodChange || (() => {})}
-            onEndPeriod={onEndPeriod}
-          />
-        </div>
-      )}
 
       {/* Timeout buttons */}
       <div className="grid grid-cols-2 gap-2">

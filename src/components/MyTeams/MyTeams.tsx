@@ -4,6 +4,7 @@ import { useTeamManagement, type Team, type PlayerWithTeam } from '../../hooks/u
 import { TeamCreationModal } from '../TeamManagement/TeamCreationModal';
 import { TeamCard } from '../TeamManagement/TeamCard';
 import { PlayerTeamAssignmentModal } from '../TeamManagement/PlayerTeamAssignmentModal';
+import { TeamEditModal } from '../TeamManagement/TeamEditModal';
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface MyTeamsProps {
@@ -19,6 +20,8 @@ export const MyTeams: React.FC<MyTeamsProps> = () => {
   const [selectedPlayerForAssignment, setSelectedPlayerForAssignment] = useState<PlayerWithTeam | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [showTeamEditModal, setShowTeamEditModal] = useState(false);
+  const [selectedTeamForEdit, setSelectedTeamForEdit] = useState<Team | null>(null);
 
   // Team operations
   const handleCreateTeam = async (name: string, description?: string, logoUrl?: string): Promise<boolean> => {
@@ -31,8 +34,8 @@ export const MyTeams: React.FC<MyTeamsProps> = () => {
   };
 
   const handleEditTeam = (team: Team) => {
-    // TODO: Implement team editing modal
-    console.log('Edit team:', team);
+    setSelectedTeamForEdit(team);
+    setShowTeamEditModal(true);
   };
 
   const handlePlayerAssignment = (player: PlayerWithTeam) => {
@@ -152,6 +155,7 @@ export const MyTeams: React.FC<MyTeamsProps> = () => {
             <TeamCard
               key={team.id}
               team={team}
+              players={teamManagement.getTeamPlayers(team.id)}
               onSelect={teamManagement.setSelectedTeamId}
               onEdit={handleEditTeam}
               onDelete={handleDeleteTeam}
@@ -281,6 +285,19 @@ export const MyTeams: React.FC<MyTeamsProps> = () => {
         onClose={() => setShowPlayerAssignmentModal(false)}
         player={selectedPlayerForAssignment}
         teams={teamManagement.teams}
+        onAssignPlayerToTeam={teamManagement.assignPlayerToTeam}
+        onRemovePlayerFromTeam={teamManagement.removePlayerFromTeam}
+      />
+
+      <TeamEditModal
+        isOpen={showTeamEditModal}
+        onClose={() => {
+          setShowTeamEditModal(false);
+          setSelectedTeamForEdit(null);
+        }}
+        team={selectedTeamForEdit}
+        players={teamManagement.players}
+        onUpdateTeam={teamManagement.updateTeam}
         onAssignPlayerToTeam={teamManagement.assignPlayerToTeam}
         onRemovePlayerFromTeam={teamManagement.removePlayerFromTeam}
       />
