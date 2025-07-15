@@ -26,6 +26,12 @@ npm run lint
 npm test
 npm run test:watch  # Watch mode
 
+# Run a specific test file
+npm test tests/video-processing.test.js
+
+# Run tests with coverage
+npm test -- --coverage
+
 # Preview production build
 npm run preview
 ```
@@ -45,23 +51,12 @@ npm run cdk:destroy  # Tear down stack
 cd cdk
 npm run deploy       # Deploy stack
 npm run db:scan      # Scan DynamoDB table
+npm run db:clear     # Clear DynamoDB data
 npm run db:players   # View players data
 npm run db:teams     # View teams data
-```
-
-### Running Tests
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run a specific test file
-npm test tests/video-processing.test.js
-
-# Run tests with coverage
-npm test -- --coverage
+npm run db:games     # View games data
+npm run db:backup    # Backup DynamoDB data
+npm run db:shell     # Access DynamoDB shell
 ```
 
 ## Architecture Overview
@@ -73,6 +68,7 @@ The application uses a component-based architecture with clear separation of con
 - **Hooks**: Custom React hooks for state management (useGameStats, useGameClock, useTeamManagement)
 - **Services**: API layer with mock mode support (`src/services/api.ts`)
 - **Utils**: Shared utilities for calculations, formatting, and logging
+- **UI Components**: Reusable UI components in `src/components/ui/` (Button, GameButton, modals)
 
 ### Backend Architecture (AWS CDK)
 The backend uses a serverless architecture deployed via AWS CDK:
@@ -103,6 +99,16 @@ The backend uses a serverless architecture deployed via AWS CDK:
    - Custom logger utility (`src/utils/logger.ts`) that respects environment
    - Console logs automatically stripped in production builds
    - CloudWatch logging for Lambda functions
+
+5. **Game State Management**:
+   - useGameStats hook manages player statistics and game state
+   - useGameClock hook handles game timing and period management
+   - Real-time plus/minus tracking and stat calculations
+
+6. **Component Communication**:
+   - Landing page → Main app navigation via state
+   - Tab-based navigation for different features
+   - Modal system for forms and confirmations
 
 ## Environment Configuration
 
@@ -150,6 +156,30 @@ The infrastructure is defined in `cdk/lib/basketball-review-stack.ts`:
 - **Lambda Runtime**: Node.js 18.x
 - **API Gateway**: REST API with `{proxy+}` routing
 
+## UI/UX Patterns
+
+1. **Button System**:
+   - Base Button component with variant system (primary, secondary, success, danger, etc.)
+   - GameButton wrapper adds click animation (green flash) for game action buttons
+   - Border highlight on hover instead of scale effects
+
+2. **Game Review Layout**:
+   - Single unified scoreboard showing scores, fouls, timeouts, and game clock
+   - Consolidated stat tracking section with player stats and game management
+   - Live box score with edit/delete capabilities
+
+3. **Player Management**:
+   - On-court (5 players max) and bench player sections
+   - Real-time substitution system
+   - Stat correction and deletion modals
+
+## Testing Strategy
+
+- Jest configuration in root `package.json`
+- Test files located in `tests/` directory
+- Coverage thresholds: 80% for all metrics (branches, functions, lines, statements)
+- Mock implementations for API calls and localStorage
+
 ## Important Considerations
 
 1. **Always run linter before committing**: The project enforces strict linting rules
@@ -157,14 +187,12 @@ The infrastructure is defined in `cdk/lib/basketball-review-stack.ts`:
 3. **Organization context**: All API calls require `X-Org-Id` header
 4. **Image handling**: Images are base64 encoded in mock mode, S3 URLs in production
 5. **Test coverage**: Maintain 80% coverage threshold for all metrics
+6. **TypeScript strict mode**: Avoid using `any` types, properly type all data structures
 
-## Recent Cleanup
+## Recent Updates
 
-The codebase was recently cleaned up to remove:
-- Duplicate CDK context flags
-- SAM/LocalStack remnants (none were found)
-- Console statements (replaced with logger utility)
-- Legacy function overloads
-- Embedded source maps in production builds
-
-Mock data initialization is now conditional (requires `VITE_INIT_MOCK_DATA=true`).
+- Unified game review scoreboard to eliminate duplication
+- Added GameButton component for visual feedback on clicks
+- Replaced button scale hover effects with border highlights
+- Consolidated opponent scoring and timeout controls into stat tracking section
+- Removed unused ScoreBoard component

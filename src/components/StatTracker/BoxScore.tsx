@@ -3,6 +3,7 @@ import { Award, Trash2, Edit3 } from 'lucide-react';
 import type { Player } from '../../types/game.types';
 import { calculateFGPercentage, calculateFTPercentage, calculateTotalRebounds } from '../../utils/statCalculations';
 import { formatTime } from '../../utils/timeFormatters';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 interface BoxScoreProps {
   players: Player[];
@@ -46,10 +47,21 @@ export const BoxScore: React.FC<BoxScoreProps> = ({ players, teamName, onEditPla
             {players.map(player => (
               <tr key={player.id} className="border-b border-zinc-700 hover:bg-zinc-800">
                 <td className="py-2 text-white font-medium">
-                  {player.name}
-                  {player.onCourt && (
-                    <span className="ml-2 text-xs bg-emerald-600 px-1 rounded">ON</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
+                      <PlayerImage 
+                        profileImageUrl={player.profileImageUrl}
+                        className="w-full h-full object-cover"
+                        alt={player.name}
+                      />
+                    </div>
+                    <span>
+                      {player.name}
+                      {player.onCourt && (
+                        <span className="ml-2 text-xs bg-emerald-600 px-1 rounded">ON</span>
+                      )}
+                    </span>
+                  </div>
                 </td>
                 <td className="text-center text-zinc-300">{formatTime(player.stats.timeOnCourt)}</td>
                 <td className="text-center font-semibold text-yellow-400">{player.stats.points}</td>

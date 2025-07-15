@@ -10,6 +10,7 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { GameScoreEditModal } from './GameScoreEditModal';
 import { ExportModal } from './ExportModal';
 import Button from '../ui/Button';
+import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 // Hooks
 import { useGameClock } from '../../hooks/useGameClock';
@@ -709,6 +710,7 @@ export const GameReview: React.FC<GameReviewProps> = () => {
       <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
         <StatButtons
           selectedPlayerName={gameStats.selectedPlayerName}
+          selectedPlayer={gameStats.players.find(p => p.id === gameStats.selectedPlayerId) || null}
           onStatUpdate={handleStatUpdate}
           isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
           onOpponentScore={handleOpponentScore}
@@ -743,9 +745,15 @@ export const GameReview: React.FC<GameReviewProps> = () => {
                         : 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600'
                     }`}
                   >
-                    <div className="font-medium text-sm">{player.name}</div>
-                    <div className="text-xs opacity-75 mt-1">
-                      {player.stats.points}pts • {player.stats.assists}ast • {player.stats.fouls}f
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
+                        <PlayerImage 
+                          profileImageUrl={player.profileImageUrl}
+                          className="w-full h-full object-cover"
+                          alt={player.name}
+                        />
+                      </div>
+                      <div className="font-medium text-sm">{player.name}</div>
                     </div>
                   </Button>
                   <Button
@@ -772,11 +780,15 @@ export const GameReview: React.FC<GameReviewProps> = () => {
                   key={player.id}
                   className="p-3 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-300 flex justify-between items-center group relative"
                 >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{player.name}</div>
-                    <div className="text-xs opacity-75 mt-1">
-                      {player.stats.points}pts • {player.stats.assists}ast • {player.stats.fouls}f
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
+                      <PlayerImage 
+                        profileImageUrl={player.profileImageUrl}
+                        className="w-full h-full object-cover"
+                        alt={player.name}
+                      />
                     </div>
+                    <div className="font-medium text-sm">{player.name}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
