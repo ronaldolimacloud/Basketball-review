@@ -9,12 +9,15 @@ import { StatCorrectionModal } from './StatCorrectionModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { GameScoreEditModal } from './GameScoreEditModal';
 import { ExportModal } from './ExportModal';
+import { PlaysTimeline } from './PlaysTimeline';
+import { GameSummary } from './GameSummary';
 import Button from '../ui/Button';
 import { PlayerImage } from '../PlayerProfiles/PlayerImage';
 
 // Hooks
 import { useGameClock } from '../../hooks/useGameClock';
 import { useGameStats } from '../../hooks/useGameStats';
+import { useGameEvents } from '../../hooks/useGameEvents';
 
 // Utils
 import { calculateTeamFouls } from '../../utils/statCalculations';
@@ -25,7 +28,7 @@ import { logger } from '../../utils/logger';
 import { api } from '../../services/api';
 
 // Icons
-import { Users, BarChart3, Edit3, Download, Clock } from 'lucide-react';
+import { Users, BarChart3, Edit3, Download, Clock, Activity, Trophy } from 'lucide-react';
 
 interface GameReviewProps {
   // Props can be added here as needed
@@ -56,6 +59,8 @@ interface GamePlayer {
   startTime: number | null;
 }
 
+type GameTab = 'management' | 'boxscore' | 'plays' | 'summary';
+
 export const GameReview: React.FC<GameReviewProps> = () => {
   // Setup state
   const [isSetup, setIsSetup] = useState(true);
@@ -63,6 +68,7 @@ export const GameReview: React.FC<GameReviewProps> = () => {
   const [opponentName, setOpponentName] = useState('');
   const [gameFormat, setGameFormat] = useState<GameFormat>('quarters');
   const [initialPlayers, setInitialPlayers] = useState<GamePlayer[]>([]);
+  const [activeTab, setActiveTab] = useState<GameTab>('management');
   
   // Game state
   const [currentGame, setCurrentGame] = useState<any>(null);
@@ -122,6 +128,9 @@ export const GameReview: React.FC<GameReviewProps> = () => {
   }, [gameStats.setPlayers]);
   
   const gameClock = useGameClock(handlePlayersUpdate);
+  
+  // Game events hook
+  const gameEvents = useGameEvents({ teamName, opponentName });
 
   // Note: Time tracking is handled by useGameClock hook, no need for duplicate interval here
 
@@ -148,6 +157,14 @@ export const GameReview: React.FC<GameReviewProps> = () => {
       if (response.success) {
         setCurrentGame(response.data);
         setIsSetup(false);
+        
+        // Add game start event
+        gameEvents.addEvent('GAME_START', {
+          period: 1,
+          gameTime: 0,
+          homeScore: 0,
+          awayScore: 0
+        });
       } else {
         logger.error('Error creating game:', response.error);
       }
@@ -159,18 +176,74 @@ export const GameReview: React.FC<GameReviewProps> = () => {
   const handleStatUpdate = (statType: StatType, value?: number) => {
     if (!gameStats.selectedPlayerId) return;
     
+    const player = gameStats.players.find(p => p.id === gameStats.selectedPlayerId);
+    if (!player) return;
+    
     gameStats.updatePlayerStat(gameStats.selectedPlayerId, statType, value);
     
-    // Handle point scoring
-    if (statType === 'points' && value) {
-      setTeamScore(prev => prev + value);
-      gameStats.updatePlusMinus(value, true);
+    // Track events
+    const eventDetails = {
+      playerName: player.name,
+      period: currentPeriod,
+      gameTime: gameClock.gameClock,
+      homeScore: teamScore,
+      awayScore: opponentScore,
+      isOpponentAction: false
+    };
+    
+    // Handle different stat types
+    switch (statType) {
+      case 'points':
+        if (value) {
+          setTeamScore(prev => prev + value);
+          gameStats.updatePlusMinus(value, true);
+          gameEvents.addEvent('SCORE', { ...eventDetails, points: value, homeScore: teamScore + value });
+        }
+        break;
+      case 'fouls':
+        gameEvents.addEvent('FOUL', eventDetails);
+        break;
+      case 'offRebounds':
+      case 'defRebounds':
+        gameEvents.addEvent('REBOUND', eventDetails);
+        break;
+      case 'assists':
+        gameEvents.addEvent('ASSIST', eventDetails);
+        break;
+      case 'steals':
+        gameEvents.addEvent('STEAL', eventDetails);
+        break;
+      case 'blocks':
+        gameEvents.addEvent('BLOCK', eventDetails);
+        break;
+      case 'turnovers':
+        gameEvents.addEvent('TURNOVER', eventDetails);
+        break;
+      case 'ftMade':
+        gameEvents.addEvent('FREE_THROW_MADE', eventDetails);
+        break;
+      case 'ftMissed':
+        gameEvents.addEvent('FREE_THROW_MISSED', eventDetails);
+        break;
+      case 'fgMissed':
+        gameEvents.addEvent('FIELD_GOAL_MISSED', { ...eventDetails, points: value || 2 });
+        break;
     }
   };
 
   const handleOpponentScore = (points: number) => {
     setOpponentScore(prev => prev + points);
     gameStats.updatePlusMinus(points, false);
+    
+    // Track opponent scoring event
+    gameEvents.addEvent('SCORE', {
+      period: currentPeriod,
+      gameTime: gameClock.gameClock,
+      homeScore: teamScore,
+      awayScore: opponentScore + points,
+      points,
+      isOpponentAction: true
+    });
   };
 
   const handleEndPeriod = () => {
@@ -186,6 +259,14 @@ export const GameReview: React.FC<GameReviewProps> = () => {
     const newPeriodScores = [...periodScores, periodScore];
     setPeriodScores(newPeriodScores);
     setPeriodStartScore({ team: teamScore, opponent: opponentScore });
+    
+    // Track period end event
+    gameEvents.addEvent('PERIOD_END', {
+      period: currentPeriod,
+      gameTime: gameClock.gameClock,
+      homeScore: teamScore,
+      awayScore: opponentScore
+    });
     
     if (currentPeriod < getMaxPeriods(gameFormat)) {
       setCurrentPeriod(currentPeriod + 1);
@@ -217,6 +298,16 @@ export const GameReview: React.FC<GameReviewProps> = () => {
       playerOutId: playerOut.id,
       playerOutName: playerOut.name,
       currentTime: gameClock.gameClock
+    });
+    
+    // Track substitution event
+    gameEvents.addEvent('SUBSTITUTION', {
+      playerInName: playerComingIn.name,
+      playerOutName: playerOut.name,
+      period: currentPeriod,
+      gameTime: gameClock.gameClock,
+      homeScore: teamScore,
+      awayScore: opponentScore
     });
     
     gameStats.substitutePlayer(playerComingIn.id, playerOut.id, gameClock.gameClock);
@@ -616,9 +707,43 @@ export const GameReview: React.FC<GameReviewProps> = () => {
     return <GameSetupForm onSetupComplete={handleSetupComplete} />;
   }
 
+  // Tab configuration
+  const tabs = [
+    { id: 'management' as GameTab, label: 'Game Management', icon: Users },
+    { id: 'boxscore' as GameTab, label: 'Box Score', icon: BarChart3 },
+    { id: 'plays' as GameTab, label: 'Plays', icon: Activity },
+    { id: 'summary' as GameTab, label: 'Summary', icon: Trophy }
+  ];
+
   return (
     <div className="h-full flex flex-col space-y-6">
-      {/* Centered Scoreboard */}
+      {/* Tab Navigation */}
+      <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-2">
+        <div className="flex gap-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
+                  ${
+                    activeTab === tab.id
+                      ? 'bg-yellow-500 text-black'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'
+                  }
+                `}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Centered Scoreboard (always visible) */}
       <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-xl p-6 border border-zinc-700">
         <div className="flex justify-center">
           <div className="relative text-center bg-gradient-to-r from-zinc-800 to-zinc-700 rounded-2xl px-12 py-8 border-2 border-yellow-400/30 shadow-2xl group">
@@ -706,149 +831,193 @@ export const GameReview: React.FC<GameReviewProps> = () => {
         </div>
       </div>
 
-      {/* Stats Buttons Section - Full Width */}
-      <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
-        <StatButtons
-          selectedPlayerName={gameStats.selectedPlayerName}
-          selectedPlayer={gameStats.players.find(p => p.id === gameStats.selectedPlayerId) || null}
-          onStatUpdate={handleStatUpdate}
-          isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
-          onOpponentScore={handleOpponentScore}
-          onTeamTimeout={() => setTeamTimeouts(prev => prev + 1)}
-          onOpponentTimeout={() => setOpponentTimeouts(prev => prev + 1)}
+      {/* Tab Content */}
+      {activeTab === 'management' && (
+        <>
+          {/* Stats Buttons Section - Full Width */}
+          <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-4">
+            <StatButtons
+              selectedPlayerName={gameStats.selectedPlayerName}
+              selectedPlayer={gameStats.players.find(p => p.id === gameStats.selectedPlayerId) || null}
+              onStatUpdate={handleStatUpdate}
+              isGameStarted={gameClock.gameClock > 0 || gameClock.isClockRunning}
+              onOpponentScore={handleOpponentScore}
+              onTeamTimeout={() => {
+                setTeamTimeouts(prev => prev + 1);
+                gameEvents.addEvent('TIMEOUT', {
+                  period: currentPeriod,
+                  gameTime: gameClock.gameClock,
+                  homeScore: teamScore,
+                  awayScore: opponentScore,
+                  isOpponentAction: false
+                });
+              }}
+              onOpponentTimeout={() => {
+                setOpponentTimeouts(prev => prev + 1);
+                gameEvents.addEvent('TIMEOUT', {
+                  period: currentPeriod,
+                  gameTime: gameClock.gameClock,
+                  homeScore: teamScore,
+                  awayScore: opponentScore,
+                  isOpponentAction: true
+                });
+              }}
+              teamName={teamName}
+              opponentName={opponentName}
+            />
+          </div>
+
+          {/* Bottom Section - Player Selection */}
+          <div className="max-w-4xl mx-auto">
+            
+            {/* Player Management */}
+            <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
+              <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Player Management
+              </h3>
+              
+              {/* On Court Players */}
+              <div className="mb-6">
+                <h4 className="text-md font-medium text-emerald-400 mb-3">On Court ({gameStats.players.filter(p => p.onCourt).length}/5)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {gameStats.players.filter(p => p.onCourt).map((player) => (
+                    <div key={player.id} className="relative group">
+                      <Button
+                        onClick={() => gameStats.setSelectedPlayerId(player.id)}
+                        className={`w-full p-3 rounded-lg text-left transition-all ${
+                          gameStats.selectedPlayerId === player.id
+                            ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg border-2 border-yellow-400'
+                            : 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
+                            <PlayerImage 
+                              profileImageUrl={player.profileImageUrl}
+                              className="w-full h-full object-cover"
+                              alt={player.name}
+                            />
+                          </div>
+                          <div className="font-medium text-sm">{player.name}</div>
+                        </div>
+                      </Button>
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatCorrectionRequest(player);
+                        }}
+                        className="absolute top-1 right-1 p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Edit Stats"
+                      >
+                        <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bench Players */}
+              <div>
+                <h4 className="text-md font-medium text-zinc-400 mb-3">Bench ({gameStats.players.filter(p => !p.onCourt).length})</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {gameStats.players.filter(p => !p.onCourt).map((player) => (
+                    <div
+                      key={player.id}
+                      className="p-3 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-300 flex justify-between items-center group relative"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
+                          <PlayerImage 
+                            profileImageUrl={player.profileImageUrl}
+                            className="w-full h-full object-cover"
+                            alt={player.name}
+                          />
+                        </div>
+                        <div className="font-medium text-sm">{player.name}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => handleStatCorrectionRequest(player)}
+                          className="p-1.5 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Edit Stats"
+                        >
+                          <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
+                        </Button>
+                        <Button
+                          onClick={() => handleSubstitutionRequest(player)}
+                          className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-xs transition-colors"
+                        >
+                          Sub In
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'boxscore' && (
+        <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Live Box Score
+            </h3>
+            
+            <Button
+              onClick={handleExportRequest}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Export Data
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <BoxScore 
+              players={convertToLegacyPlayers(gameStats.players)} 
+              teamName={teamName}
+              onEditPlayerStats={(player) => {
+                // Convert legacy player back to GamePlayer format
+                const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
+                if (gamePlayer) {
+                  handleStatCorrectionRequest(gamePlayer);
+                }
+              }}
+              onDeletePlayerStats={(player) => {
+                // Convert legacy player back to GamePlayer format
+                const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
+                if (gamePlayer) {
+                  handleDeletePlayerStatsRequest(gamePlayer);
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'plays' && (
+        <PlaysTimeline 
+          events={gameEvents.events}
           teamName={teamName}
           opponentName={opponentName}
         />
-      </div>
+      )}
 
-      {/* Bottom Section - Player Selection */}
-      <div className="max-w-4xl mx-auto">
-        
-        {/* Player Management */}
-        <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-          <h3 className="text-lg font-semibold text-yellow-400 mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Player Management
-          </h3>
-          
-          {/* On Court Players */}
-          <div className="mb-6">
-            <h4 className="text-md font-medium text-emerald-400 mb-3">On Court ({gameStats.players.filter(p => p.onCourt).length}/5)</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              {gameStats.players.filter(p => p.onCourt).map((player) => (
-                <div key={player.id} className="relative group">
-                  <Button
-                    onClick={() => gameStats.setSelectedPlayerId(player.id)}
-                    className={`w-full p-3 rounded-lg text-left transition-all ${
-                      gameStats.selectedPlayerId === player.id
-                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg border-2 border-yellow-400'
-                        : 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
-                        <PlayerImage 
-                          profileImageUrl={player.profileImageUrl}
-                          className="w-full h-full object-cover"
-                          alt={player.name}
-                        />
-                      </div>
-                      <div className="font-medium text-sm">{player.name}</div>
-                    </div>
-                  </Button>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStatCorrectionRequest(player);
-                    }}
-                    className="absolute top-1 right-1 p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Edit Stats"
-                  >
-                    <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bench Players */}
-          <div>
-            <h4 className="text-md font-medium text-zinc-400 mb-3">Bench ({gameStats.players.filter(p => !p.onCourt).length})</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {gameStats.players.filter(p => !p.onCourt).map((player) => (
-                <div
-                  key={player.id}
-                  className="p-3 rounded-lg bg-zinc-800 border border-zinc-600 text-zinc-300 flex justify-between items-center group relative"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-600 flex-shrink-0">
-                      <PlayerImage 
-                        profileImageUrl={player.profileImageUrl}
-                        className="w-full h-full object-cover"
-                        alt={player.name}
-                      />
-                    </div>
-                    <div className="font-medium text-sm">{player.name}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => handleStatCorrectionRequest(player)}
-                      className="p-1.5 bg-zinc-700 hover:bg-zinc-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Edit Stats"
-                    >
-                      <Edit3 className="w-3 h-3 text-zinc-400 hover:text-white" />
-                    </Button>
-                    <Button
-                      onClick={() => handleSubstitutionRequest(player)}
-                      className="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-xs transition-colors"
-                    >
-                      Sub In
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Box Score - Full Width */}
-      <div className="bg-zinc-900 rounded-xl border border-zinc-700 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
-            Live Box Score
-          </h3>
-          
-          <Button
-            onClick={handleExportRequest}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Export Data
-          </Button>
-        </div>
-        <div className="overflow-x-auto">
-          <BoxScore 
-            players={convertToLegacyPlayers(gameStats.players)} 
-            teamName={teamName}
-            onEditPlayerStats={(player) => {
-              // Convert legacy player back to GamePlayer format
-              const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
-              if (gamePlayer) {
-                handleStatCorrectionRequest(gamePlayer);
-              }
-            }}
-            onDeletePlayerStats={(player) => {
-              // Convert legacy player back to GamePlayer format
-              const gamePlayer = gameStats.players.find(p => p.id === player.id.toString() || parseInt(p.id.replace(/\D/g, '')) === player.id);
-              if (gamePlayer) {
-                handleDeletePlayerStatsRequest(gamePlayer);
-              }
-            }}
-          />
-        </div>
-      </div>
+      {activeTab === 'summary' && (
+        <GameSummary
+          periodScores={periodScores}
+          currentPeriod={currentPeriod}
+          teamName={teamName}
+          opponentName={opponentName}
+          teamScore={teamScore}
+          opponentScore={opponentScore}
+          gameFormat={gameFormat}
+        />
+      )}
 
       {/* Finish Game Button */}
       <div className="text-center pt-4 border-t border-zinc-700">
